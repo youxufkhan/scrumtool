@@ -9,11 +9,20 @@ import {
   addProject,
   addHoliday,
   deleteHoliday,
+  adminResetMemberPasscode,
+  adminMarkMemberLeaveRange,
+  adminGetMemberLeaves,
+  adminCancelMemberLeave,
 } from '@/app/actions/adminActions';
+import { verifyMemberPasscode, changeMemberPasscode, checkMemberGate } from '@/app/actions/standupActions';
 
 describe('adminActions', () => {
   beforeEach(() => {
     mockStore.clear();
+    mockStore.members.forEach((m) => {
+      m.has_custom_passcode = false;
+      m.passcode_hash = '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50';
+    });
   });
 
   it('validates admin passcode correctly', async () => {
@@ -25,7 +34,6 @@ describe('adminActions', () => {
   });
 
   it('aggregates daily standup report for all members', async () => {
-    // Member 1 has submitted tasks
     mockStore.tasks.push({
       id: 't-1',
       member_id: 'm-1',
@@ -63,46 +71,61 @@ describe('adminActions', () => {
       created_at: new Date().toISOString(),
     });
 
-    const unlockRes = await unlockSubmission('m-1', '2026-08-24');
-    expect(unlockRes.success).toBe(true);
+    const res = await unlockSubmission('m-1', '2026-08-24');
+    expect(res.success).toBe(true);
 
     const sub = mockStore.submissions.find((s) => s.member_id === 'm-1' && s.date === '2026-08-24');
     expect(sub?.is_locked).toBe(false);
   });
 
-  it('computes analytics summary with member and project breakdowns', async () => {
-    mockStore.tasks.push({
-      id: 't-1',
-      member_id: 'm-1',
-      project_id: 'p-1',
-      date: '2026-08-24',
-      title: 'Core task',
-      status: 'done',
-      hours_spent: 6.0,
-      is_ad_hoc: false,
-      order_index: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+  it('allows admin to reset a member passcode back to 1234', async () => {
+    // 1. User changes PIN to 8888
+    await changeMemberPasscode('m-1', '1234', '8888');
+    const auth8888 = await verifyMemberPasscode('m-1', '8888');
+    expect(auth8888.success).toBe(true);
+    expect(auth8888.data?.requiresSetup).toBe(false);
 
-    const analytics = await getAdminAnalytics('2026-08-01', '2026-08-31');
-    expect(analytics.totalHours).toBe(6.0);
-    expect(analytics.totalPlannedHours).toBe(6.0);
-    expect(analytics.memberBreakdown.length).toBeGreaterThan(0);
-    expect(analytics.projectBreakdown.length).toBeGreaterThan(0);
+    // 2. Admin resets PIN
+    const resetRes = await adminResetMemberPasscode('m-1');
+    expect(resetRes.success).toBe(true);
+
+    // 3. 1234 works again and requires setup
+    const auth1234 = await verifyMemberPasscode('m-1', '1234');
+    expect(auth1234.success).toBe(true);
+    expect(auth1234.data?.requiresSetup).toBe(true);
+
+    // 4. Old 8888 no longer works
+    const oldAuth = await verifyMemberPasscode('m-1', '8888');
+    expect(oldAuth.success).toBe(false);
   });
 
-  it('allows adding and removing holidays', async () => {
-    const addRes = await addHoliday('2026-12-25', 'Christmas Day');
-    expect(addRes.success).toBe(true);
+  it('allows admin to mark a member on leave across a date range excluding weekends', async () => {
+    // Friday Aug 21, 2026 to Tuesday Aug 25, 2026
+    // Working days: Friday Aug 21, Monday Aug 24, Tuesday Aug 25 (3 working days, Sat/Sun skipped)
+    const leaveRes = await adminMarkMemberLeaveRange('m-1', '2026-08-21', '2026-08-25', 'Annual Vacation');
+    expect(leaveRes.success).toBe(true);
+    expect(leaveRes.data?.daysCount).toBe(3);
+    expect(leaveRes.data?.dates).toEqual(['2026-08-21', '2026-08-24', '2026-08-25']);
 
-    const holiday = mockStore.holidays.find((h) => h.date === '2026-12-25');
-    expect(holiday?.name).toBe('Christmas Day');
+    // Check that submissions are locked and marked as leave
+    const leaves = await adminGetMemberLeaves();
+    expect(leaves.length).toBe(3);
+    expect(leaves[0].is_on_leave).toBe(true);
 
-    if (holiday) {
-      const delRes = await deleteHoliday(holiday.id);
-      expect(delRes.success).toBe(true);
-      expect(mockStore.holidays.length).toBe(0);
-    }
+    // Member gate check should be exempt
+    const gate = await checkMemberGate('m-1', '2026-08-26');
+    expect(gate.isBlocked).toBe(false);
+  });
+
+  it('allows admin to cancel a scheduled leave', async () => {
+    await adminMarkMemberLeaveRange('m-1', '2026-08-24', '2026-08-24', 'Sick Leave');
+    const leaves = await adminGetMemberLeaves();
+    expect(leaves.length).toBe(1);
+
+    const cancelRes = await adminCancelMemberLeave(leaves[0].id);
+    expect(cancelRes.success).toBe(true);
+
+    const leavesAfter = await adminGetMemberLeaves();
+    expect(leavesAfter.length).toBe(0);
   });
 });

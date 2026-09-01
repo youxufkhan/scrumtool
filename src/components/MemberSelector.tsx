@@ -1,16 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Member } from '@/types/database';
-import { UserCheck, Sparkles } from 'lucide-react';
+import { UserCheck, Sparkles, Lock } from 'lucide-react';
+import { MemberPasscodeModal } from './MemberPasscodeModal';
 
 interface MemberSelectorProps {
   members: Member[];
   selectedMemberId: string | null;
-  onSelectMember: (member: Member) => void;
+  onSelectMember: (member: Member, token: string) => void;
 }
 
 export function MemberSelector({ members, selectedMemberId, onSelectMember }: MemberSelectorProps) {
+  const [selectedForAuth, setSelectedForAuth] = useState<Member | null>(null);
+
+  if (selectedForAuth) {
+    return (
+      <MemberPasscodeModal
+        member={selectedForAuth}
+        onSuccess={(token) => {
+          onSelectMember(selectedForAuth, token);
+        }}
+        onBack={() => setSelectedForAuth(null)}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -20,7 +35,7 @@ export function MemberSelector({ members, selectedMemberId, onSelectMember }: Me
           </div>
           <h2 className="text-xl font-bold text-slate-900">Who is logging in today?</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Pick your name to start. Your selection is remembered on this device.
+            Pick your profile to authenticate with your 4-digit PIN.
           </p>
         </div>
 
@@ -30,8 +45,8 @@ export function MemberSelector({ members, selectedMemberId, onSelectMember }: Me
             return (
               <button
                 key={member.id}
-                onClick={() => onSelectMember(member)}
-                className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                onClick={() => setSelectedForAuth(member)}
+                className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                   isSelected
                     ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20'
                     : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
@@ -50,7 +65,10 @@ export function MemberSelector({ members, selectedMemberId, onSelectMember }: Me
                   </div>
                 </div>
 
-                {isSelected && <UserCheck className="w-5 h-5 text-indigo-600" />}
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>PIN</span>
+                </div>
               </button>
             );
           })}

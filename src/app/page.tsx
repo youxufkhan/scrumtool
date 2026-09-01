@@ -8,7 +8,7 @@ import { DailyStandupLogger } from '@/components/DailyStandupLogger';
 import { LockedStandupCard } from '@/components/LockedStandupCard';
 import { Member, Project, DailyTask, DailySubmission, Holiday } from '@/types/database';
 import { getLocalTodayIso } from '@/lib/dateUtils';
-import { getMembers, getProjects, checkMemberGate, getDailyTasks } from '@/app/actions/standupActions';
+import { getMembers, getProjects, checkMemberGate, getDailyTasks, verifyMemberSession } from '@/app/actions/standupActions';
 import { Palmtree, Sun, Sparkles } from 'lucide-react';
 
 export default function MemberHomePage() {
@@ -31,7 +31,7 @@ export default function MemberHomePage() {
   const [isWeekend, setIsWeekend] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 1. Initial Load: Fetch members, projects and check localStorage
+  // 1. Initial Load: Fetch members, projects and check cached session token
   useEffect(() => {
     const initApp = async () => {
       setLoading(true);
@@ -41,11 +41,15 @@ export default function MemberHomePage() {
         setProjects(projList);
 
         const savedMemberId = localStorage.getItem('scrumtool_member_id');
-        if (savedMemberId) {
+        const savedToken = localStorage.getItem('scrumtool_member_token');
+
+        if (savedMemberId && savedToken) {
+          const isValid = await verifyMemberSession(savedMemberId, savedToken);
           const found = memList.find((m) => m.id === savedMemberId);
-          if (found) {
+          if (isValid && found) {
             setCurrentMember(found);
           } else {
+            localStorage.removeItem('scrumtool_member_token');
             setShowMemberPicker(true);
           }
         } else {
@@ -92,9 +96,10 @@ export default function MemberHomePage() {
     }
   }, [currentMember, loadMemberDayData]);
 
-  const handleSelectMember = (member: Member) => {
+  const handleSelectMember = (member: Member, token: string) => {
     setCurrentMember(member);
     localStorage.setItem('scrumtool_member_id', member.id);
+    localStorage.setItem('scrumtool_member_token', token);
     setShowMemberPicker(false);
   };
 

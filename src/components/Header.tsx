@@ -24,6 +24,7 @@ export function Header({
 }: HeaderProps) {
   const isCurrentToday = currentDate === todayDate;
   const isDateWeekend = isWeekend(currentDate);
+  const isFutureDisabled = currentDate >= todayDate;
 
   const handlePrevDay = () => {
     const prev = format(subDays(parseISO(currentDate), 1), 'yyyy-MM-dd');
@@ -31,6 +32,7 @@ export function Header({
   };
 
   const handleNextDay = () => {
+    if (isFutureDisabled) return;
     const next = format(addDays(parseISO(currentDate), 1), 'yyyy-MM-dd');
     onDateChange(next);
   };
@@ -60,7 +62,7 @@ export function Header({
           <button
             onClick={handlePrevDay}
             title="Previous Day"
-            className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -73,12 +75,22 @@ export function Header({
                 Weekend
               </span>
             )}
+            {isCurrentToday && (
+              <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                Today
+              </span>
+            )}
           </div>
 
           <button
             onClick={handleNextDay}
-            title="Next Day"
-            className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition-colors"
+            disabled={isFutureDisabled}
+            title={isFutureDisabled ? 'Cannot navigate to future dates' : 'Next Day'}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isFutureDisabled
+                ? 'opacity-30 cursor-not-allowed text-slate-400'
+                : 'hover:bg-white text-slate-600 hover:text-slate-900 cursor-pointer'
+            }`}
           >
             <ChevronRight className="w-4 h-4" />
           </button>

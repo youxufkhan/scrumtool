@@ -1,8 +1,10 @@
 'use server';
 
+import crypto from 'crypto';
 import { getSupabaseClient, mockStore, isSupabaseConfigured } from '@/lib/db';
 import { Member, Project, DailyTask, DailySubmission, Holiday, TaskStatus } from '@/types/database';
-import { isWeekend, getPastWorkingDays, getPriorWorkingDay, isValidDateString } from '@/lib/dateUtils';
+import { isWeekend, getPastWorkingDays, getPriorWorkingDay, isValidDateString, getLocalTodayIso } from '@/lib/dateUtils';
+import { hashPasscode, generateMemberSessionToken } from '@/lib/authUtils';
 import { subDays, parseISO, format } from 'date-fns';
 
 export interface GateCheckResult {
@@ -17,19 +19,154 @@ export interface ActionResult<T = unknown> {
 }
 
 /**
- * Fetch all active team members
+ * Fetch all active team members (excluding passcode_hash for security)
  */
 export async function getMembers(): Promise<Member[]> {
   const supabase = getSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase
       .from('members')
-      .select('*')
+      .select('id, name, role, avatar_color, is_active, has_custom_passcode, joined_at, created_at')
       .eq('is_active', true)
       .order('name');
     if (!error && data) return data as Member[];
   }
-  return mockStore.members.filter((m) => m.is_active);
+  return mockStore.members
+    .filter((m) => m.is_active)
+    .map(({ passcode_hash, ...rest }) => rest as Member);
+}
+
+/**
+ * Verify member's 4-digit passcode and return cached session token
+ */
+export async function verifyMemberPasscode(
+  memberId: string,
+  passcode: string
+): Promise<ActionResult<{ token: string; requiresSetup: boolean; memberName: string }>> {
+  if (!memberId || !passcode || !/^\d{4}$/.test(passcode)) {
+    return { success: false, error: 'Passcode must be exactly 4 numeric digits.' };
+  }
+
+  const supabase = getSupabaseClient();
+  let memberRecord: { id: string; name: string; passcode_hash?: string; has_custom_passcode?: boolean } | null = null;
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('members')
+      .select('id, name, passcode_hash, has_custom_passcode')
+      .eq('id', memberId)
+      .single();
+    memberRecord = data;
+  } else {
+    const found = mockStore.members.find((m) => m.id === memberId);
+    if (found) {
+      memberRecord = {
+        id: found.id,
+        name: found.name,
+        passcode_hash: found.passcode_hash,
+        has_custom_passcode: found.has_custom_passcode,
+      };
+    }
+  }
+
+  if (!memberRecord) {
+    return { success: false, error: 'Member not found.' };
+  }
+
+  const expectedHash = memberRecord.passcode_hash || hashPasscode('1234');
+  const inputHash = hashPasscode(passcode);
+
+  const expectedBuf = Buffer.from(expectedHash);
+  const inputBuf = Buffer.from(inputHash);
+
+  if (expectedBuf.length !== inputBuf.length || !crypto.timingSafeEqual(expectedBuf, inputBuf)) {
+    return { success: false, error: 'Incorrect passcode. Please try again.' };
+  }
+
+  const token = generateMemberSessionToken(memberId, expectedHash);
+  const requiresSetup = !memberRecord.has_custom_passcode && passcode === '1234';
+
+  return {
+    success: true,
+    data: {
+      token,
+      requiresSetup,
+      memberName: memberRecord.name,
+    },
+  };
+}
+
+/**
+ * Change member's 4-digit passcode from old to new
+ */
+export async function changeMemberPasscode(
+  memberId: string,
+  currentPasscode: string,
+  newPasscode: string
+): Promise<ActionResult<{ token: string }>> {
+  if (!/^\d{4}$/.test(newPasscode)) {
+    return { success: false, error: 'New passcode must be exactly 4 digits.' };
+  }
+
+  // Verify current passcode first
+  const verifyRes = await verifyMemberPasscode(memberId, currentPasscode);
+  if (!verifyRes.success) {
+    return { success: false, error: verifyRes.error || 'Current passcode verification failed.' };
+  }
+
+  const newHash = hashPasscode(newPasscode);
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { error } = await supabase
+      .from('members')
+      .update({ passcode_hash: newHash, has_custom_passcode: true })
+      .eq('id', memberId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+  } else {
+    const m = mockStore.members.find((mem) => mem.id === memberId);
+    if (m) {
+      m.passcode_hash = newHash;
+      m.has_custom_passcode = true;
+    }
+  }
+
+  const newToken = generateMemberSessionToken(memberId, newHash);
+  return { success: true, data: { token: newToken } };
+}
+
+/**
+ * Validates a cached session token from localStorage
+ */
+export async function verifyMemberSession(memberId: string, token: string): Promise<boolean> {
+  if (!memberId || !token) return false;
+
+  const supabase = getSupabaseClient();
+  let expectedHash: string | null = null;
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('members')
+      .select('passcode_hash')
+      .eq('id', memberId)
+      .single();
+    if (data?.passcode_hash) expectedHash = data.passcode_hash;
+  } else {
+    const m = mockStore.members.find((mem) => mem.id === memberId);
+    if (m?.passcode_hash) expectedHash = m.passcode_hash;
+  }
+
+  if (!expectedHash) expectedHash = hashPasscode('1234');
+  const validToken = generateMemberSessionToken(memberId, expectedHash);
+
+  const tokenBuf = Buffer.from(token);
+  const validBuf = Buffer.from(validToken);
+
+  if (tokenBuf.length !== validBuf.length) return false;
+  return crypto.timingSafeEqual(tokenBuf, validBuf);
 }
 
 /**
@@ -247,6 +384,12 @@ export async function saveDailyTasks(
 ): Promise<ActionResult<DailyTask[]>> {
   if (!memberId || !date || !isValidDateString(date)) {
     return { success: false, error: 'Invalid member or date' };
+  }
+
+  // 0. Enforce future date lockout
+  const todayIso = getLocalTodayIso();
+  if (date > todayIso) {
+    return { success: false, error: 'FUTURE_DATE_NOT_ALLOWED: Cannot record or submit standup for future dates.' };
   }
 
   // 1. Verify lock status

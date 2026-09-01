@@ -6,6 +6,8 @@ export interface Member {
   role: string;
   avatar_color: string;
   is_active: boolean;
+  has_custom_passcode?: boolean;
+  passcode_hash?: string;
   joined_at: string;
   created_at: string;
 }

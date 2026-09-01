@@ -1,40 +1,81 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Users, Briefcase, Palmtree, Sparkles, Check, AlertCircle } from 'lucide-react';
-import { Member, Project, Holiday } from '@/types/database';
+import {
+  Plus,
+  Trash2,
+  Users,
+  Briefcase,
+  Palmtree,
+  Sparkles,
+  Check,
+  AlertCircle,
+  KeyRound,
+  Calendar,
+  Clock,
+  RotateCcw,
+} from 'lucide-react';
+import { Member, Project, Holiday, DailySubmission } from '@/types/database';
 import { getMembers, getProjects, getHolidaysList } from '@/app/actions/standupActions';
-import { addMember, addProject, addHoliday, deleteHoliday } from '@/app/actions/adminActions';
+import {
+  addMember,
+  addProject,
+  addHoliday,
+  deleteHoliday,
+  adminResetMemberPasscode,
+  adminMarkMemberLeaveRange,
+  adminGetMemberLeaves,
+  adminCancelMemberLeave,
+} from '@/app/actions/adminActions';
 
 export function HolidayAndTeamManager() {
-  const [activeTab, setActiveTab] = useState<'members' | 'projects' | 'holidays'>('holidays');
+  const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects'>('holidays');
 
   // Lists
   const [members, setMembers] = useState<Member[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [scheduledLeaves, setScheduledLeaves] = useState<(DailySubmission & { member?: Member })[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Forms
+  // Forms: Member
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('');
   const [newMemberColor, setNewMemberColor] = useState('#3B82F6');
 
+  // Forms: Project
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState('#6366F1');
 
+  // Forms: Holiday
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [newHolidayName, setNewHolidayName] = useState('');
 
-  const [message, setMessage] = useState<string | null>(null);
+  // Forms: Leave / PTO
+  const [leaveMemberId, setLeaveMemberId] = useState('');
+  const [leaveStartDate, setLeaveStartDate] = useState('');
+  const [leaveEndDate, setLeaveEndDate] = useState('');
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [m, p, h] = await Promise.all([getMembers(), getProjects(), getHolidaysList()]);
+      const [m, p, h, l] = await Promise.all([
+        getMembers(),
+        getProjects(),
+        getHolidaysList(),
+        adminGetMemberLeaves(),
+      ]);
       setMembers(m);
       setProjects(p);
       setHolidays(h);
+      setScheduledLeaves(l);
+      if (m.length > 0 && !leaveMemberId) {
+        setLeaveMemberId(m[0].id);
+      }
     } catch (err) {
       console.error('Failed to load settings data', err);
     } finally {
@@ -55,11 +96,31 @@ export function HolidayAndTeamManager() {
       if (res.success) {
         setNewMemberName('');
         setNewMemberRole('');
-        setMessage('Added team member successfully!');
+        setMessage({ text: 'Added team member successfully! (Initial PIN: 1234)', type: 'success' });
         loadData();
+      } else {
+        setMessage({ text: res.error || 'Failed to add member.', type: 'error' });
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setMessage({ text: 'Error adding member.', type: 'error' });
+    }
+  };
+
+  const handleResetPasscode = async (memberId: string, memberName: string) => {
+    if (!confirm(`Reset passcode for ${memberName} back to default (1234)?`)) {
+      return;
+    }
+
+    try {
+      const res = await adminResetMemberPasscode(memberId);
+      if (res.success) {
+        setMessage({ text: `Passcode for ${memberName} has been reset to 1234.`, type: 'success' });
+        loadData();
+      } else {
+        setMessage({ text: res.error || 'Failed to reset passcode.', type: 'error' });
+      }
+    } catch {
+      setMessage({ text: 'Error resetting passcode.', type: 'error' });
     }
   };
 
@@ -71,11 +132,11 @@ export function HolidayAndTeamManager() {
       const res = await addProject(newProjectName, newProjectColor);
       if (res.success) {
         setNewProjectName('');
-        setMessage('Added project successfully!');
+        setMessage({ text: 'Added project successfully!', type: 'success' });
         loadData();
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setMessage({ text: 'Error adding project.', type: 'error' });
     }
   };
 
@@ -88,11 +149,11 @@ export function HolidayAndTeamManager() {
       if (res.success) {
         setNewHolidayDate('');
         setNewHolidayName('');
-        setMessage('Added official holiday successfully!');
+        setMessage({ text: 'Added official holiday successfully!', type: 'success' });
         loadData();
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setMessage({ text: 'Error adding holiday.', type: 'error' });
     }
   };
 
@@ -101,21 +162,70 @@ export function HolidayAndTeamManager() {
     try {
       const res = await deleteHoliday(id);
       if (res.success) {
-        setMessage('Deleted holiday successfully.');
+        setMessage({ text: 'Deleted holiday successfully.', type: 'success' });
         loadData();
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setMessage({ text: 'Error deleting holiday.', type: 'error' });
+    }
+  };
+
+  const handleScheduleLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leaveMemberId || !leaveStartDate || !leaveEndDate) {
+      setMessage({ text: 'Please select member, start date, and end date.', type: 'error' });
+      return;
+    }
+
+    setLeaveSubmitting(true);
+    setMessage(null);
+
+    try {
+      const res = await adminMarkMemberLeaveRange(leaveMemberId, leaveStartDate, leaveEndDate, leaveReason);
+      if (res.success && res.data) {
+        setMessage({
+          text: `Scheduled leave for ${res.data.daysCount} working day(s) successfully!`,
+          type: 'success',
+        });
+        setLeaveStartDate('');
+        setLeaveEndDate('');
+        setLeaveReason('');
+        loadData();
+      } else {
+        setMessage({ text: res.error || 'Failed to schedule leave.', type: 'error' });
+      }
+    } catch {
+      setMessage({ text: 'Error scheduling member leave.', type: 'error' });
+    } finally {
+      setLeaveSubmitting(false);
+    }
+  };
+
+  const handleCancelLeave = async (submissionId: string, memberName?: string, date?: string) => {
+    if (!confirm(`Cancel leave for ${memberName || 'member'} on ${date || 'selected date'}?`)) {
+      return;
+    }
+
+    try {
+      const res = await adminCancelMemberLeave(submissionId);
+      if (res.success) {
+        setMessage({ text: 'Canceled scheduled leave successfully.', type: 'success' });
+        loadData();
+      } else {
+        setMessage({ text: res.error || 'Failed to cancel leave.', type: 'error' });
+      }
+    } catch {
+      setMessage({ text: 'Error canceling leave.', type: 'error' });
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Sub Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveTab('holidays')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeTab === 'holidays' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
@@ -124,8 +234,18 @@ export function HolidayAndTeamManager() {
         </button>
 
         <button
+          onClick={() => setActiveTab('leaves')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            activeTab === 'leaves' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Leave / PTO Manager</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('members')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeTab === 'members' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
@@ -135,7 +255,7 @@ export function HolidayAndTeamManager() {
 
         <button
           onClick={() => setActiveTab('projects')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeTab === 'projects' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
@@ -145,9 +265,15 @@ export function HolidayAndTeamManager() {
       </div>
 
       {message && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-2xl flex items-center justify-between">
-          <span>{message}</span>
-          <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-700">
+        <div
+          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between border animate-in fade-in duration-200 ${
+            message.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-red-50 text-red-800 border-red-200'
+          }`}
+        >
+          <span>{message.text}</span>
+          <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2">
             ✕
           </button>
         </div>
@@ -221,10 +347,132 @@ export function HolidayAndTeamManager() {
 
                     <button
                       onClick={() => handleDeleteHoliday(h.id, h.name)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                       title="Delete holiday"
                     >
                       <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* LEAVE / PTO MANAGER TAB */}
+      {activeTab === 'leaves' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Schedule Leave Form */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs h-fit">
+            <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-600" />
+              <span>Schedule Member Leave</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Marks member on leave for a date or range, exempting them from standup compliance.
+            </p>
+
+            <form onSubmit={handleScheduleLeave} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Team Member</label>
+                <select
+                  value={leaveMemberId}
+                  onChange={(e) => setLeaveMemberId(e.target.value)}
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                >
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.role || 'Member'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Start Date</label>
+                <input
+                  type="date"
+                  required
+                  value={leaveStartDate}
+                  onChange={(e) => {
+                    setLeaveStartDate(e.target.value);
+                    if (!leaveEndDate) setLeaveEndDate(e.target.value);
+                  }}
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">End Date</label>
+                <input
+                  type="date"
+                  required
+                  value={leaveEndDate}
+                  onChange={(e) => setLeaveEndDate(e.target.value)}
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Leave Reason (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Annual Vacation, Medical Leave"
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={leaveSubmitting}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50 mt-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>{leaveSubmitting ? 'Scheduling...' : 'Confirm Member Leave'}</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Scheduled Leaves List */}
+          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">Active & Scheduled Leaves</h3>
+
+            {loading ? (
+              <div className="py-8 text-center text-xs text-slate-400">Loading...</div>
+            ) : scheduledLeaves.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No member leaves recorded yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto pr-1">
+                {scheduledLeaves.map((l) => (
+                  <div key={l.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ backgroundColor: l.member?.avatar_color || '#10B981' }}
+                      >
+                        {l.member?.name ? l.member.name.slice(0, 1).toUpperCase() : 'M'}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">
+                          {l.member?.name || 'Unknown Member'}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                          <span className="font-semibold text-slate-700">{l.date}</span>
+                          {l.leave_reason && <span>• {l.leave_reason}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleCancelLeave(l.id, l.member?.name, l.date)}
+                      className="text-[11px] font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2.5 py-1 rounded-lg border border-red-100 transition-colors cursor-pointer"
+                    >
+                      Cancel Leave
                     </button>
                   </div>
                 ))}
@@ -303,18 +551,29 @@ export function HolidayAndTeamManager() {
               {members.map((m) => (
                 <div
                   key={m.id}
-                  className="p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3 bg-slate-50/50"
+                  className="p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 bg-slate-50/50"
                 >
-                  <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0"
-                    style={{ backgroundColor: m.avatar_color || '#3B82F6' }}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0"
+                      style={{ backgroundColor: m.avatar_color || '#3B82F6' }}
+                    >
+                      {m.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{m.name}</h4>
+                      <span className="text-[11px] text-slate-500">{m.role}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleResetPasscode(m.id, m.name)}
+                    className="flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                    title="Reset member passcode back to 1234"
                   >
-                    {m.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{m.name}</h4>
-                    <span className="text-[11px] text-slate-500">{m.role}</span>
-                  </div>
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset PIN</span>
+                  </button>
                 </div>
               ))}
             </div>

@@ -14,6 +14,7 @@ import {
 } from '@/types/database';
 import { isWeekend, getPastWorkingDays } from '@/lib/dateUtils';
 import { ActionResult, getHolidaysList } from './standupActions';
+import { hashPasscode } from '@/lib/authUtils';
 
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '1234';
 
@@ -441,3 +442,148 @@ export async function deleteHoliday(id: string): Promise<ActionResult> {
   mockStore.holidays = mockStore.holidays.filter((h) => h.id !== id);
   return { success: true };
 }
+
+/**
+ * Admin Action: Reset a member's 4-digit passcode back to default '1234'
+ */
+export async function adminResetMemberPasscode(memberId: string): Promise<ActionResult> {
+  const defaultHash = hashPasscode('1234');
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { error } = await supabase
+      .from('members')
+      .update({ passcode_hash: defaultHash, has_custom_passcode: false })
+      .eq('id', memberId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  const m = mockStore.members.find((mem) => mem.id === memberId);
+  if (m) {
+    m.passcode_hash = defaultHash;
+    m.has_custom_passcode = false;
+  }
+  return { success: true };
+}
+
+/**
+ * Admin Action: Mark a member on leave for a date or date range.
+ * Automatically computes working days (excluding weekends & holidays) and creates locked leave submissions.
+ */
+export async function adminMarkMemberLeaveRange(
+  memberId: string,
+  startDate: string,
+  endDate: string,
+  reason?: string
+): Promise<ActionResult<{ daysCount: number; dates: string[] }>> {
+  if (!memberId || !startDate || !endDate) {
+    return { success: false, error: 'Member, Start Date, and End Date are required.' };
+  }
+  if (startDate > endDate) {
+    return { success: false, error: 'Start Date must be before or equal to End Date.' };
+  }
+
+  const holidays = await getHolidaysList();
+  const holidayDates = holidays.map((h) => h.date);
+  const workingDays = getPastWorkingDays(startDate, endDate, holidayDates);
+
+  if (workingDays.length === 0) {
+    return {
+      success: false,
+      error: 'The selected range does not contain any working days (dates fall on weekends or existing holidays).',
+    };
+  }
+
+  const leaveReason = reason?.trim() || 'Approved Leave / PTO';
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const submissionsToUpsert = workingDays.map((date) => ({
+      member_id: memberId,
+      date,
+      is_locked: true,
+      is_on_leave: true,
+      leave_reason: leaveReason,
+      submitted_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from('daily_submissions')
+      .upsert(submissionsToUpsert, { onConflict: 'member_id,date' });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: { daysCount: workingDays.length, dates: workingDays } };
+  }
+
+  // Mock Store
+  workingDays.forEach((date) => {
+    const existingIdx = mockStore.submissions.findIndex((s) => s.member_id === memberId && s.date === date);
+    if (existingIdx >= 0) {
+      mockStore.submissions[existingIdx].is_locked = true;
+      mockStore.submissions[existingIdx].is_on_leave = true;
+      mockStore.submissions[existingIdx].leave_reason = leaveReason;
+      mockStore.submissions[existingIdx].submitted_at = new Date().toISOString();
+    } else {
+      mockStore.submissions.push({
+        id: `leave-${Date.now()}-${date}`,
+        member_id: memberId,
+        date,
+        is_locked: true,
+        is_on_leave: true,
+        leave_reason: leaveReason,
+        submitted_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+    }
+  });
+
+  return { success: true, data: { daysCount: workingDays.length, dates: workingDays } };
+}
+
+/**
+ * Admin Action: Fetch list of scheduled member leaves
+ */
+export async function adminGetMemberLeaves(): Promise<
+  (DailySubmission & { member?: Member })[]
+> {
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('daily_submissions')
+      .select('*, member:members(id, name, role, avatar_color)')
+      .eq('is_on_leave', true)
+      .order('date', { ascending: false })
+      .limit(100);
+
+    return (data || []) as (DailySubmission & { member?: Member })[];
+  }
+
+  return mockStore.submissions
+    .filter((s) => s.is_on_leave)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((s) => {
+      const mem = mockStore.members.find((m) => m.id === s.member_id);
+      return { ...s, member: mem };
+    });
+}
+
+/**
+ * Admin Action: Cancel/Delete a scheduled leave submission
+ */
+export async function adminCancelMemberLeave(submissionId: string): Promise<ActionResult> {
+  if (!submissionId) return { success: false, error: 'Submission ID is required.' };
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    const { error } = await supabase.from('daily_submissions').delete().eq('id', submissionId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  mockStore.submissions = mockStore.submissions.filter((s) => s.id !== submissionId);
+  return { success: true };
+}
+
