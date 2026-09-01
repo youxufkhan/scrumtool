@@ -73,18 +73,39 @@ export async function verifyMemberPasscode(
     return { success: false, error: 'Member not found.' };
   }
 
-  const expectedHash = memberRecord.passcode_hash || hashPasscode('1234');
+  const hasCustom = Boolean(memberRecord.has_custom_passcode);
   const inputHash = hashPasscode(passcode);
+  let isMatch = false;
 
-  const expectedBuf = Buffer.from(expectedHash);
-  const inputBuf = Buffer.from(inputHash);
+  if (!hasCustom) {
+    // If not customized yet, default '1234' is unconditionally valid
+    if (passcode === '1234') {
+      isMatch = true;
+    } else if (memberRecord.passcode_hash) {
+      const expectedBuf = Buffer.from(memberRecord.passcode_hash);
+      const inputBuf = Buffer.from(inputHash);
+      if (expectedBuf.length === inputBuf.length && crypto.timingSafeEqual(expectedBuf, inputBuf)) {
+        isMatch = true;
+      }
+    }
+  } else {
+    // Member has configured their custom PIN
+    if (memberRecord.passcode_hash) {
+      const expectedBuf = Buffer.from(memberRecord.passcode_hash);
+      const inputBuf = Buffer.from(inputHash);
+      if (expectedBuf.length === inputBuf.length && crypto.timingSafeEqual(expectedBuf, inputBuf)) {
+        isMatch = true;
+      }
+    }
+  }
 
-  if (expectedBuf.length !== inputBuf.length || !crypto.timingSafeEqual(expectedBuf, inputBuf)) {
+  if (!isMatch) {
     return { success: false, error: 'Incorrect passcode. Please try again.' };
   }
 
-  const token = generateMemberSessionToken(memberId, expectedHash);
-  const requiresSetup = !memberRecord.has_custom_passcode && passcode === '1234';
+  const tokenHash = hasCustom && memberRecord.passcode_hash ? memberRecord.passcode_hash : inputHash;
+  const token = generateMemberSessionToken(memberId, tokenHash);
+  const requiresSetup = !hasCustom;
 
   return {
     success: true,
@@ -145,28 +166,44 @@ export async function verifyMemberSession(memberId: string, token: string): Prom
   if (!memberId || !token) return false;
 
   const supabase = getSupabaseClient();
-  let expectedHash: string | null = null;
+  let memberRecord: { passcode_hash?: string; has_custom_passcode?: boolean } | null = null;
 
   if (supabase) {
     const { data } = await supabase
       .from('members')
-      .select('passcode_hash')
+      .select('passcode_hash, has_custom_passcode')
       .eq('id', memberId)
       .single();
-    if (data?.passcode_hash) expectedHash = data.passcode_hash;
+    memberRecord = data;
   } else {
     const m = mockStore.members.find((mem) => mem.id === memberId);
-    if (m?.passcode_hash) expectedHash = m.passcode_hash;
+    if (m) memberRecord = { passcode_hash: m.passcode_hash, has_custom_passcode: m.has_custom_passcode };
   }
 
-  if (!expectedHash) expectedHash = hashPasscode('1234');
-  const validToken = generateMemberSessionToken(memberId, expectedHash);
+  if (!memberRecord) return false;
 
   const tokenBuf = Buffer.from(token);
-  const validBuf = Buffer.from(validToken);
 
-  if (tokenBuf.length !== validBuf.length) return false;
-  return crypto.timingSafeEqual(tokenBuf, validBuf);
+  // Check 1: token generated from stored hash
+  if (memberRecord.passcode_hash) {
+    const validToken1 = generateMemberSessionToken(memberId, memberRecord.passcode_hash);
+    const validBuf1 = Buffer.from(validToken1);
+    if (tokenBuf.length === validBuf1.length && crypto.timingSafeEqual(tokenBuf, validBuf1)) {
+      return true;
+    }
+  }
+
+  // Check 2: token generated from default hash (if not customized yet)
+  if (!memberRecord.has_custom_passcode) {
+    const defaultHash = hashPasscode('1234');
+    const validToken2 = generateMemberSessionToken(memberId, defaultHash);
+    const validBuf2 = Buffer.from(validToken2);
+    if (tokenBuf.length === validBuf2.length && crypto.timingSafeEqual(tokenBuf, validBuf2)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
