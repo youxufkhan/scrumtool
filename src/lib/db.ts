@@ -3,8 +3,13 @@ import { Member, Project, DailySubmission, DailyTask, Holiday } from '@/types/da
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-project'));
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  (supabaseServiceKey || supabaseAnonKey) &&
+  !supabaseUrl.includes('your-project')
+);
 
 let supabaseInstance: SupabaseClient | null = null;
 
@@ -12,8 +17,11 @@ export function getSupabaseClient(): SupabaseClient | null {
   if (!isSupabaseConfigured) {
     return null;
   }
+  const key = supabaseServiceKey || supabaseAnonKey;
+  if (!key) return null;
+
   if (!supabaseInstance) {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    supabaseInstance = createClient(supabaseUrl, key, {
       auth: {
         persistSession: false,
       },
