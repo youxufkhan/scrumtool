@@ -8,23 +8,37 @@ import { AdminDailyBoard } from '@/components/admin/AdminDailyBoard';
 import { AdminAnalyticsView } from '@/components/admin/AdminAnalyticsView';
 import { HolidayAndTeamManager } from '@/components/admin/HolidayAndTeamManager';
 import { getLocalTodayIso } from '@/lib/dateUtils';
+import { checkInitialAdminAuth } from '@/app/actions/authActions';
+import { adminLogout } from '@/app/actions/adminActions';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'board' | 'analytics' | 'settings'>('board');
   const [todayDate] = useState<string>(getLocalTodayIso());
 
   useEffect(() => {
-    const token = sessionStorage.getItem('scrumtool_admin_token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
+    checkInitialAdminAuth()
+      .then((isValid) => {
+        setIsAuthenticated(isValid);
+      })
+      .finally(() => {
+        setCheckingAuth(false);
+      });
   }, []);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('scrumtool_admin_token');
+  const handleLogout = async () => {
+    await adminLogout();
     setIsAuthenticated(false);
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <AdminAuthModal onAuthenticated={() => setIsAuthenticated(true)} />;
@@ -72,7 +86,7 @@ export default function AdminPage() {
         <div className="flex items-center gap-2 bg-slate-200/70 p-1.5 rounded-2xl w-fit">
           <button
             onClick={() => setActiveTab('board')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'board'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -84,7 +98,7 @@ export default function AdminPage() {
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'analytics'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -96,7 +110,7 @@ export default function AdminPage() {
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'settings'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'

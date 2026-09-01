@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mockStore } from '@/lib/db';
+import { clearTestCookies } from '@/lib/authUtils';
 import {
   verifyAdminPasscode,
+  adminLogout,
   getAdminDailyStandup,
   getAdminAnalytics,
   unlockSubmission,
@@ -13,19 +15,21 @@ import {
   adminMarkMemberLeaveRange,
   adminGetMemberLeaves,
   adminCancelMemberLeave,
+  exportAdminCsvData,
 } from '@/app/actions/adminActions';
 import { verifyMemberPasscode, changeMemberPasscode, checkMemberGate } from '@/app/actions/standupActions';
 
 describe('adminActions', () => {
   beforeEach(() => {
     mockStore.clear();
+    clearTestCookies();
     mockStore.members.forEach((m) => {
       m.has_custom_passcode = false;
       m.passcode_hash = '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50';
     });
   });
 
-  it('validates admin passcode correctly', async () => {
+  it('validates admin passcode correctly and sets session cookie', async () => {
     const valid = await verifyAdminPasscode('1234');
     expect(valid.success).toBe(true);
 
@@ -33,7 +37,26 @@ describe('adminActions', () => {
     expect(invalid.success).toBe(false);
   });
 
-  it('aggregates daily standup report for all members', async () => {
+  it('rejects unauthenticated requests to admin actions', async () => {
+    // No login performed
+    await expect(getAdminDailyStandup('2026-08-24')).rejects.toThrow('UNAUTHORIZED');
+
+    const addMemRes = await addMember('Unauthorized Member', 'Engineer');
+    expect(addMemRes.success).toBe(false);
+    expect(addMemRes.error).toContain('UNAUTHORIZED');
+
+    const resetRes = await adminResetMemberPasscode('m-1');
+    expect(resetRes.success).toBe(false);
+    expect(resetRes.error).toContain('UNAUTHORIZED');
+
+    const csvRes = await exportAdminCsvData('2026-08-01', '2026-08-31');
+    expect(csvRes.success).toBe(false);
+    expect(csvRes.error).toContain('UNAUTHORIZED');
+  });
+
+  it('aggregates daily standup report for all members after login', async () => {
+    await verifyAdminPasscode('1234');
+
     mockStore.tasks.push({
       id: 't-1',
       member_id: 'm-1',
@@ -62,6 +85,8 @@ describe('adminActions', () => {
   });
 
   it('allows admin to unlock a member locked submission for corrections', async () => {
+    await verifyAdminPasscode('1234');
+
     mockStore.submissions.push({
       id: 'sub-1',
       member_id: 'm-1',
@@ -85,7 +110,8 @@ describe('adminActions', () => {
     expect(auth8888.success).toBe(true);
     expect(auth8888.data?.requiresSetup).toBe(false);
 
-    // 2. Admin resets PIN
+    // 2. Admin resets PIN (must be logged in as admin)
+    await verifyAdminPasscode('1234');
     const resetRes = await adminResetMemberPasscode('m-1');
     expect(resetRes.success).toBe(true);
 
@@ -100,6 +126,8 @@ describe('adminActions', () => {
   });
 
   it('allows admin to mark a member on leave across a date range excluding weekends', async () => {
+    await verifyAdminPasscode('1234');
+
     // Friday Aug 21, 2026 to Tuesday Aug 25, 2026
     // Working days: Friday Aug 21, Monday Aug 24, Tuesday Aug 25 (3 working days, Sat/Sun skipped)
     const leaveRes = await adminMarkMemberLeaveRange('m-1', '2026-08-21', '2026-08-25', 'Annual Vacation');
@@ -118,6 +146,8 @@ describe('adminActions', () => {
   });
 
   it('allows admin to cancel a scheduled leave', async () => {
+    await verifyAdminPasscode('1234');
+
     await adminMarkMemberLeaveRange('m-1', '2026-08-24', '2026-08-24', 'Sick Leave');
     const leaves = await adminGetMemberLeaves();
     expect(leaves.length).toBe(1);
@@ -127,5 +157,14 @@ describe('adminActions', () => {
 
     const leavesAfter = await adminGetMemberLeaves();
     expect(leavesAfter.length).toBe(0);
+  });
+
+  it('clears admin session on logout', async () => {
+    await verifyAdminPasscode('1234');
+    const reportBefore = await getAdminDailyStandup('2026-08-24');
+    expect(reportBefore).toBeDefined();
+
+    await adminLogout();
+    await expect(getAdminDailyStandup('2026-08-24')).rejects.toThrow('UNAUTHORIZED');
   });
 });

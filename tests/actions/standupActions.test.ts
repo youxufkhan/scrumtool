@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mockStore } from '@/lib/db';
+import { clearTestCookies } from '@/lib/authUtils';
 import {
   checkMemberGate,
   getDailyTasks,
@@ -10,19 +11,43 @@ import {
   verifyMemberPasscode,
   changeMemberPasscode,
   verifyMemberSession,
+  memberLogout,
 } from '@/app/actions/standupActions';
 
 describe('standupActions', () => {
   const testMemberId = 'm-1';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockStore.clear();
+    clearTestCookies();
     // Reset mock members to default
     const m1 = mockStore.members.find((m) => m.id === testMemberId);
     if (m1) {
       m1.has_custom_passcode = false;
       m1.passcode_hash = '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50'; // hash('1234')
     }
+    // Authenticate test member by default for member operations
+    await verifyMemberPasscode(testMemberId, '1234');
+  });
+
+  it('rejects mutating operations without valid member authentication', async () => {
+    await memberLogout(); // Clear cookies
+
+    const saveRes = await saveDailyTasks(testMemberId, '2026-08-24', [{ title: 'Unauth task' }]);
+    expect(saveRes.success).toBe(false);
+    expect(saveRes.error).toContain('UNAUTHORIZED');
+
+    const submitRes = await submitAndLockDay(testMemberId, '2026-08-24', [{ title: 'Unauth task', hours_spent: 2 }]);
+    expect(submitRes.success).toBe(false);
+    expect(submitRes.error).toContain('UNAUTHORIZED');
+
+    const leaveRes = await markDayOnLeave(testMemberId, '2026-08-24');
+    expect(leaveRes.success).toBe(false);
+    expect(leaveRes.error).toContain('UNAUTHORIZED');
+
+    const carryRes = await carryForwardYesterdayTasks(testMemberId, '2026-08-24');
+    expect(carryRes.success).toBe(false);
+    expect(carryRes.error).toContain('UNAUTHORIZED');
   });
 
   it('allows standup when member has no past unsubmitted tasks', async () => {

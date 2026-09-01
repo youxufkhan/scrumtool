@@ -1,7 +1,8 @@
 'use server';
 
 import crypto from 'crypto';
-import { getSupabaseClient, mockStore } from '@/lib/db';
+import { mockStore } from '@/lib/db';
+import { getServerSupabaseClient } from '@/lib/serverDb';
 import {
   Member,
   Project,
@@ -14,12 +15,32 @@ import {
 } from '@/types/database';
 import { isWeekend, getPastWorkingDays } from '@/lib/dateUtils';
 import { ActionResult, getHolidaysList } from './standupActions';
-import { hashPasscode } from '@/lib/authUtils';
+import { hashPasscode, setAdminCookie, clearAdminCookie, getAdminAuthFromCookies } from '@/lib/authUtils';
 
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '1234';
 
 /**
+ * Checks if the incoming request has valid admin authorization
+ */
+export async function requireAdminAuth(): Promise<boolean> {
+  const token = await getAdminAuthFromCookies();
+  if (!token) return false;
+
+  const expectedToken = crypto
+    .createHash('sha256')
+    .update(`${ADMIN_PASSCODE}-${new Date().toDateString()}`)
+    .digest('hex');
+
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(expectedToken);
+
+  if (tokenBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+}
+
+/**
  * Constant-time passcode verification to protect against timing attacks.
+ * Sets a secure HTTP-only cookie on success.
  */
 export async function verifyAdminPasscode(passcode: string): Promise<ActionResult<{ token: string }>> {
   if (!passcode || typeof passcode !== 'string') {
@@ -38,20 +59,34 @@ export async function verifyAdminPasscode(passcode: string): Promise<ActionResul
     return { success: false, error: 'Incorrect admin passcode.' };
   }
 
-  // Generate simple token for client state
+  // Generate simple token for client state & cookie
   const token = crypto.createHash('sha256').update(`${ADMIN_PASSCODE}-${new Date().toDateString()}`).digest('hex');
+  await setAdminCookie(token);
+
   return { success: true, data: { token } };
+}
+
+/**
+ * Admin logout action clearing session cookie
+ */
+export async function adminLogout(): Promise<ActionResult> {
+  await clearAdminCookie();
+  return { success: true };
 }
 
 /**
  * Aggregates daily standup report for all team members for the specified date.
  */
 export async function getAdminDailyStandup(date: string): Promise<DailyStandupReport> {
+  if (!(await requireAdminAuth())) {
+    throw new Error('UNAUTHORIZED: Admin authentication required.');
+  }
+
   const holidays = await getHolidaysList();
   const holiday = holidays.find((h) => h.date === date) || null;
   const weekend = isWeekend(date);
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data: membersData } = await supabase.from('members').select('*').eq('is_active', true).order('name');
     const members = (membersData || []) as Member[];
@@ -186,7 +221,11 @@ export async function getAdminDailyStandup(date: string): Promise<DailyStandupRe
  * Admin action: Unlocks a submission for a member on a given date to allow corrections.
  */
 export async function unlockSubmission(memberId: string, date: string): Promise<ActionResult> {
-  const supabase = getSupabaseClient();
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { error } = await supabase
       .from('daily_submissions')
@@ -209,7 +248,11 @@ export async function unlockSubmission(memberId: string, date: string): Promise<
  * Analytics: Aggregates total hours, member breakdowns, project distribution, and daily trends.
  */
 export async function getAdminAnalytics(startDate: string, endDate: string): Promise<AnalyticsSummary> {
-  const supabase = getSupabaseClient();
+  if (!(await requireAdminAuth())) {
+    throw new Error('UNAUTHORIZED: Admin authentication required.');
+  }
+
+  const supabase = getServerSupabaseClient();
 
   let members: Member[] = [];
   let projects: Project[] = [];
@@ -281,32 +324,36 @@ export async function getAdminAnalytics(startDate: string, endDate: string): Pro
     dailyMap.set(t.date, dayData);
   });
 
-  const memberBreakdown = members.map((m) => {
-    const data = memberMap.get(m.id) || { totalHours: 0, tasksCount: 0, activeDays: new Set() };
-    const daysCount = data.activeDays.size;
-    const avg = daysCount > 0 ? Number((data.totalHours / daysCount).toFixed(1)) : 0;
+  const memberBreakdown = members
+    .map((m) => {
+      const data = memberMap.get(m.id) || { totalHours: 0, tasksCount: 0, activeDays: new Set() };
+      const daysCount = data.activeDays.size;
+      const avg = daysCount > 0 ? Number((data.totalHours / daysCount).toFixed(1)) : 0;
 
-    return {
-      memberId: m.id,
-      memberName: m.name,
-      totalHours: Number(data.totalHours.toFixed(2)),
-      tasksCount: data.tasksCount,
-      daysActiveCount: daysCount,
-      avgHoursPerDay: avg,
-    };
-  }).sort((a, b) => b.totalHours - a.totalHours);
+      return {
+        memberId: m.id,
+        memberName: m.name,
+        totalHours: Number(data.totalHours.toFixed(2)),
+        tasksCount: data.tasksCount,
+        daysActiveCount: daysCount,
+        avgHoursPerDay: avg,
+      };
+    })
+    .sort((a, b) => b.totalHours - a.totalHours);
 
-  const projectBreakdown = projects.map((p) => {
-    const hours = projectMap.get(p.id) || 0;
-    const pct = totalHours > 0 ? Number(((hours / totalHours) * 100).toFixed(1)) : 0;
-    return {
-      projectId: p.id,
-      projectName: p.name,
-      projectColor: p.color,
-      totalHours: Number(hours.toFixed(2)),
-      percentage: pct,
-    };
-  }).sort((a, b) => b.totalHours - a.totalHours);
+  const projectBreakdown = projects
+    .map((p) => {
+      const hours = projectMap.get(p.id) || 0;
+      const pct = totalHours > 0 ? Number(((hours / totalHours) * 100).toFixed(1)) : 0;
+      return {
+        projectId: p.id,
+        projectName: p.name,
+        projectColor: p.color,
+        totalHours: Number(hours.toFixed(2)),
+        percentage: pct,
+      };
+    })
+    .sort((a, b) => b.totalHours - a.totalHours);
 
   const dailyTrends = Array.from(dailyMap.entries())
     .map(([date, d]) => ({
@@ -333,10 +380,14 @@ export async function getAdminAnalytics(startDate: string, endDate: string): Pro
  * Manage Members: Add new team member
  */
 export async function addMember(name: string, role: string, avatarColor?: string): Promise<ActionResult<Member>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   if (!name || name.trim().length === 0) return { success: false, error: 'Name is required' };
 
   const color = avatarColor || '#3B82F6';
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const { data, error } = await supabase
@@ -366,10 +417,14 @@ export async function addMember(name: string, role: string, avatarColor?: string
  * Manage Projects: Add new project
  */
 export async function addProject(name: string, color?: string): Promise<ActionResult<Project>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   if (!name || name.trim().length === 0) return { success: false, error: 'Project name is required' };
 
   const projColor = color || '#6366F1';
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const { data, error } = await supabase
@@ -397,9 +452,13 @@ export async function addProject(name: string, color?: string): Promise<ActionRe
  * Manage Holidays: Add a new custom holiday
  */
 export async function addHoliday(date: string, name: string): Promise<ActionResult<Holiday>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   if (!date || !name) return { success: false, error: 'Date and Holiday Name are required' };
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase
       .from('holidays')
@@ -432,7 +491,11 @@ export async function addHoliday(date: string, name: string): Promise<ActionResu
  * Manage Holidays: Remove a holiday
  */
 export async function deleteHoliday(id: string): Promise<ActionResult> {
-  const supabase = getSupabaseClient();
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { error } = await supabase.from('holidays').delete().eq('id', id);
     if (error) return { success: false, error: error.message };
@@ -447,8 +510,12 @@ export async function deleteHoliday(id: string): Promise<ActionResult> {
  * Admin Action: Reset a member's 4-digit passcode back to default '1234'
  */
 export async function adminResetMemberPasscode(memberId: string): Promise<ActionResult> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   const defaultHash = hashPasscode('1234');
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const { error } = await supabase
@@ -478,6 +545,10 @@ export async function adminMarkMemberLeaveRange(
   endDate: string,
   reason?: string
 ): Promise<ActionResult<{ daysCount: number; dates: string[] }>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   if (!memberId || !startDate || !endDate) {
     return { success: false, error: 'Member, Start Date, and End Date are required.' };
   }
@@ -497,7 +568,7 @@ export async function adminMarkMemberLeaveRange(
   }
 
   const leaveReason = reason?.trim() || 'Approved Leave / PTO';
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const submissionsToUpsert = workingDays.map((date) => ({
@@ -548,7 +619,11 @@ export async function adminMarkMemberLeaveRange(
 export async function adminGetMemberLeaves(): Promise<
   (DailySubmission & { member?: Member })[]
 > {
-  const supabase = getSupabaseClient();
+  if (!(await requireAdminAuth())) {
+    return [];
+  }
+
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const { data } = await supabase
@@ -574,9 +649,13 @@ export async function adminGetMemberLeaves(): Promise<
  * Admin Action: Cancel/Delete a scheduled leave submission
  */
 export async function adminCancelMemberLeave(submissionId: string): Promise<ActionResult> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
   if (!submissionId) return { success: false, error: 'Submission ID is required.' };
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { error } = await supabase.from('daily_submissions').delete().eq('id', submissionId);
     if (error) return { success: false, error: error.message };
@@ -587,3 +666,38 @@ export async function adminCancelMemberLeave(submissionId: string): Promise<Acti
   return { success: true };
 }
 
+/**
+ * Admin Action: Securely fetch tasks for CSV export
+ */
+export async function exportAdminCsvData(
+  startDate: string,
+  endDate: string
+): Promise<ActionResult<(DailyTask & { member?: Member; project?: Project | null })[]>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED: Admin authentication required.' };
+  }
+
+  const supabase = getServerSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('daily_tasks')
+      .select('*, member:members(*), project:projects(*)')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .not('hours_spent', 'is', null)
+      .order('date', { ascending: true });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: (data || []) as (DailyTask & { member?: Member; project?: Project | null })[] };
+  }
+
+  const allTasks = mockStore.tasks
+    .filter((t) => t.date >= startDate && t.date <= endDate && t.hours_spent !== null && t.hours_spent !== undefined)
+    .map((t) => {
+      const mem = mockStore.members.find((m) => m.id === t.member_id);
+      const proj = mockStore.projects.find((p) => p.id === t.project_id) || null;
+      return { ...t, member: mem, project: proj };
+    });
+
+  return { success: true, data: allTasks };
+}

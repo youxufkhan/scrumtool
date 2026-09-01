@@ -29,10 +29,9 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { AnalyticsSummary, DailyTask, Member, Project } from '@/types/database';
-import { getAdminAnalytics } from '@/app/actions/adminActions';
+import { getAdminAnalytics, exportAdminCsvData } from '@/app/actions/adminActions';
 import { getDailyTasks } from '@/app/actions/standupActions';
 import { generateStandupCsv, CsvTaskRow } from '@/lib/csvUtils';
-import { getSupabaseClient, mockStore } from '@/lib/db';
 
 export function AdminAnalyticsView() {
   const today = new Date();
@@ -73,27 +72,13 @@ export function AdminAnalyticsView() {
   const handleExportCsv = async () => {
     setDownloadingCsv(true);
     try {
-      const supabase = getSupabaseClient();
-      let allTasks: (DailyTask & { member?: Member; project?: Project | null })[] = [];
-
-      if (supabase) {
-        const { data } = await supabase
-          .from('daily_tasks')
-          .select('*, member:members(*), project:projects(*)')
-          .gte('date', startDate)
-          .lte('date', endDate)
-          .not('hours_spent', 'is', null)
-          .order('date', { ascending: true });
-        allTasks = (data || []) as (DailyTask & { member?: Member; project?: Project | null })[];
-      } else {
-        allTasks = mockStore.tasks
-          .filter((t) => t.date >= startDate && t.date <= endDate && t.hours_spent !== null && t.hours_spent !== undefined)
-          .map((t) => {
-            const mem = mockStore.members.find((m) => m.id === t.member_id);
-            const proj = mockStore.projects.find((p) => p.id === t.project_id) || null;
-            return { ...t, member: mem, project: proj };
-          });
+      const res = await exportAdminCsvData(startDate, endDate);
+      if (!res.success || !res.data) {
+        console.error('CSV export failed:', res.error);
+        return;
       }
+
+      const allTasks = res.data;
 
       const rows: CsvTaskRow[] = allTasks.map((t) => ({
         date: t.date,

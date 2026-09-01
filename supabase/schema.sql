@@ -68,19 +68,13 @@ CREATE INDEX IF NOT EXISTS idx_daily_tasks_project ON daily_tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_daily_submissions_member_date ON daily_submissions(member_id, date);
 CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date);
 
--- Enable RLS
+-- Enable RLS (Strict Database Lockdown: No direct anon access)
+-- All operations are mediated securely via Next.js Server Actions using the Service Role.
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
-
--- Allow public / anon read & write policies (app logic is enforced via server actions and API)
-CREATE POLICY "Allow anon all on members" ON members FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon all on projects" ON projects FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon all on daily_submissions" ON daily_submissions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon all on daily_tasks" ON daily_tasks FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon all on holidays" ON holidays FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- Initial Seed Data (Safe Upserts)

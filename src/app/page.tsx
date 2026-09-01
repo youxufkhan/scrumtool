@@ -8,8 +8,9 @@ import { DailyStandupLogger } from '@/components/DailyStandupLogger';
 import { LockedStandupCard } from '@/components/LockedStandupCard';
 import { Member, Project, DailyTask, DailySubmission, Holiday } from '@/types/database';
 import { getLocalTodayIso } from '@/lib/dateUtils';
-import { getMembers, getProjects, checkMemberGate, getDailyTasks, verifyMemberSession } from '@/app/actions/standupActions';
-import { Palmtree, Sun, Sparkles } from 'lucide-react';
+import { getMembers, getProjects, checkMemberGate, getDailyTasks, memberLogout } from '@/app/actions/standupActions';
+import { checkInitialMemberAuth } from '@/app/actions/authActions';
+import { Palmtree, Sun } from 'lucide-react';
 
 export default function MemberHomePage() {
   const [todayDate] = useState<string>(getLocalTodayIso());
@@ -31,25 +32,25 @@ export default function MemberHomePage() {
   const [isWeekend, setIsWeekend] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 1. Initial Load: Fetch members, projects and check cached session token
+  // 1. Initial Load: Fetch members, projects and check cookie session
   useEffect(() => {
     const initApp = async () => {
       setLoading(true);
       try {
-        const [memList, projList] = await Promise.all([getMembers(), getProjects()]);
+        const [memList, projList, authState] = await Promise.all([
+          getMembers(),
+          getProjects(),
+          checkInitialMemberAuth(),
+        ]);
         setMembers(memList);
         setProjects(projList);
 
-        const savedMemberId = localStorage.getItem('scrumtool_member_id');
-        const savedToken = localStorage.getItem('scrumtool_member_token');
-
-        if (savedMemberId && savedToken) {
-          const isValid = await verifyMemberSession(savedMemberId, savedToken);
-          const found = memList.find((m) => m.id === savedMemberId);
-          if (isValid && found) {
+        if (authState.isAuthenticated && authState.memberId) {
+          const found = memList.find((m) => m.id === authState.memberId);
+          if (found) {
             setCurrentMember(found);
           } else {
-            localStorage.removeItem('scrumtool_member_token');
+            await memberLogout();
             setShowMemberPicker(true);
           }
         } else {
@@ -96,11 +97,15 @@ export default function MemberHomePage() {
     }
   }, [currentMember, loadMemberDayData]);
 
-  const handleSelectMember = (member: Member, token: string) => {
+  const handleSelectMember = (member: Member) => {
     setCurrentMember(member);
-    localStorage.setItem('scrumtool_member_id', member.id);
-    localStorage.setItem('scrumtool_member_token', token);
     setShowMemberPicker(false);
+  };
+
+  const handleSwitchMember = async () => {
+    await memberLogout();
+    setCurrentMember(null);
+    setShowMemberPicker(true);
   };
 
   return (
@@ -110,7 +115,7 @@ export default function MemberHomePage() {
         currentDate={currentDate}
         onDateChange={setCurrentDate}
         currentMember={currentMember}
-        onSwitchMember={() => setShowMemberPicker(true)}
+        onSwitchMember={handleSwitchMember}
         todayDate={todayDate}
       />
 
@@ -134,7 +139,7 @@ export default function MemberHomePage() {
           <div className="text-center py-20">
             <button
               onClick={() => setShowMemberPicker(true)}
-              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-md hover:bg-indigo-700 transition-colors"
+              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-md hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               Select Your Name to Begin
             </button>

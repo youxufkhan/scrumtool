@@ -1,10 +1,17 @@
 'use server';
 
 import crypto from 'crypto';
-import { getSupabaseClient, mockStore, isSupabaseConfigured } from '@/lib/db';
+import { mockStore, isSupabaseConfigured } from '@/lib/db';
+import { getServerSupabaseClient } from '@/lib/serverDb';
 import { Member, Project, DailyTask, DailySubmission, Holiday, TaskStatus } from '@/types/database';
 import { isWeekend, getPastWorkingDays, getPriorWorkingDay, isValidDateString, getLocalTodayIso } from '@/lib/dateUtils';
-import { hashPasscode, generateMemberSessionToken } from '@/lib/authUtils';
+import {
+  hashPasscode,
+  generateMemberSessionToken,
+  setMemberCookies,
+  clearMemberCookies,
+  getMemberAuthFromCookies,
+} from '@/lib/authUtils';
 import { subDays, parseISO, format } from 'date-fns';
 
 export interface GateCheckResult {
@@ -19,10 +26,29 @@ export interface ActionResult<T = unknown> {
 }
 
 /**
+ * Checks if the incoming request has valid authorization for the given member
+ */
+export async function requireMemberAuth(memberId: string): Promise<boolean> {
+  const auth = await getMemberAuthFromCookies();
+  if (!auth.memberId || !auth.token || auth.memberId !== memberId) {
+    return false;
+  }
+  return await verifyMemberSession(auth.memberId, auth.token);
+}
+
+/**
+ * Member logout action clearing session cookies
+ */
+export async function memberLogout(): Promise<ActionResult> {
+  await clearMemberCookies();
+  return { success: true };
+}
+
+/**
  * Fetch all active team members (excluding passcode_hash for security)
  */
 export async function getMembers(): Promise<Member[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase
       .from('members')
@@ -47,7 +73,7 @@ export async function verifyMemberPasscode(
     return { success: false, error: 'Passcode must be exactly 4 numeric digits.' };
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   let memberRecord: { id: string; name: string; passcode_hash?: string; has_custom_passcode?: boolean } | null = null;
 
   if (supabase) {
@@ -107,6 +133,9 @@ export async function verifyMemberPasscode(
   const token = generateMemberSessionToken(memberId, tokenHash);
   const requiresSetup = !hasCustom;
 
+  // Set secure HTTP-only cookies
+  await setMemberCookies(memberId, token);
+
   return {
     success: true,
     data: {
@@ -136,7 +165,7 @@ export async function changeMemberPasscode(
   }
 
   const newHash = hashPasscode(newPasscode);
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
 
   if (supabase) {
     const { error } = await supabase
@@ -156,16 +185,18 @@ export async function changeMemberPasscode(
   }
 
   const newToken = generateMemberSessionToken(memberId, newHash);
+  await setMemberCookies(memberId, newToken);
+
   return { success: true, data: { token: newToken } };
 }
 
 /**
- * Validates a cached session token from localStorage
+ * Validates a cached session token
  */
 export async function verifyMemberSession(memberId: string, token: string): Promise<boolean> {
   if (!memberId || !token) return false;
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   let memberRecord: { passcode_hash?: string; has_custom_passcode?: boolean } | null = null;
 
   if (supabase) {
@@ -210,7 +241,7 @@ export async function verifyMemberSession(memberId: string, token: string): Prom
  * Fetch all active projects
  */
 export async function getProjects(): Promise<Project[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase
       .from('projects')
@@ -226,7 +257,7 @@ export async function getProjects(): Promise<Project[]> {
  * Fetch all holidays
  */
 export async function getHolidaysList(): Promise<Holiday[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase.from('holidays').select('*').order('date');
     if (!error && data) return data as Holiday[];
@@ -248,7 +279,7 @@ export async function checkMemberGate(memberId: string, clientToday: string): Pr
 
   // 2. Fetch member's joined date (do not check dates before they joined!)
   let joinedAt = '2026-01-01';
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data } = await supabase.from('members').select('joined_at').eq('id', memberId).single();
     if (data?.joined_at) joinedAt = data.joined_at;
@@ -361,7 +392,7 @@ export async function getDailyTasks(memberId: string, date: string): Promise<{
   const holiday = holidays.find((h) => h.date === date) || null;
   const weekend = isWeekend(date);
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data: subData } = await supabase
       .from('daily_submissions')
@@ -412,7 +443,7 @@ export async function getDailyTasks(memberId: string, date: string): Promise<{
 
 /**
  * Saves tasks for a day.
- * Enforces server-side gate check and immutability lock.
+ * Enforces server-side auth, gate check, and immutability lock.
  */
 export async function saveDailyTasks(
   memberId: string,
@@ -423,6 +454,11 @@ export async function saveDailyTasks(
     return { success: false, error: 'Invalid member or date' };
   }
 
+  // Authorization check
+  if (!(await requireMemberAuth(memberId))) {
+    return { success: false, error: 'UNAUTHORIZED: Authentication required to save tasks.' };
+  }
+
   // 0. Enforce future date lockout
   const todayIso = getLocalTodayIso();
   if (date > todayIso) {
@@ -430,7 +466,7 @@ export async function saveDailyTasks(
   }
 
   // 1. Verify lock status
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { data: sub } = await supabase
       .from('daily_submissions')
@@ -535,6 +571,11 @@ export async function submitAndLockDay(
   date: string,
   tasks: Partial<DailyTask>[]
 ): Promise<ActionResult> {
+  // Authorization check
+  if (!(await requireMemberAuth(memberId))) {
+    return { success: false, error: 'UNAUTHORIZED: Authentication required to submit standup.' };
+  }
+
   // First save the tasks
   const saveRes = await saveDailyTasks(memberId, date, tasks);
   if (!saveRes.success) {
@@ -548,7 +589,7 @@ export async function submitAndLockDay(
     }
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { error } = await supabase
       .from('daily_submissions')
@@ -593,7 +634,12 @@ export async function submitAndLockDay(
  * Marks a date as On Leave / PTO for a member.
  */
 export async function markDayOnLeave(memberId: string, date: string, reason?: string): Promise<ActionResult> {
-  const supabase = getSupabaseClient();
+  // Authorization check
+  if (!(await requireMemberAuth(memberId))) {
+    return { success: false, error: 'UNAUTHORIZED: Authentication required to mark leave.' };
+  }
+
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     const { error } = await supabase.from('daily_submissions').upsert(
       {
@@ -636,10 +682,15 @@ export async function carryForwardYesterdayTasks(
   memberId: string,
   todayDate: string
 ): Promise<{ success: boolean; copiedCount: number; error?: string }> {
+  // Authorization check
+  if (!(await requireMemberAuth(memberId))) {
+    return { success: false, copiedCount: 0, error: 'UNAUTHORIZED: Authentication required.' };
+  }
+
   const holidays = await getHolidaysList();
   const priorDay = getPriorWorkingDay(todayDate, holidays.map((h) => h.date));
 
-  const supabase = getSupabaseClient();
+  const supabase = getServerSupabaseClient();
   if (supabase) {
     // Get prior day unfinished tasks
     const { data: priorTasks } = await supabase
