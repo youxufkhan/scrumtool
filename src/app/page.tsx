@@ -67,9 +67,9 @@ export default function MemberHomePage() {
   }, []);
 
   // 2. Load Gate & Daily Data when member or date changes
-  const loadMemberDayData = useCallback(async () => {
+  const loadMemberDayData = useCallback(async (isSilent = false) => {
     if (!currentMember) return;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
 
     try {
       // Check gate
@@ -87,7 +87,7 @@ export default function MemberHomePage() {
     } catch (err) {
       console.error('Failed to load member standup data', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, [currentMember, currentDate, todayDate]);
 
@@ -187,13 +187,14 @@ export default function MemberHomePage() {
               />
             ) : (
               <DailyStandupLogger
+                key={`${currentMember.id}-${currentDate}`}
                 memberId={currentMember.id}
                 memberName={currentMember.name}
                 date={currentDate}
                 initialTasks={tasks}
                 projects={projects}
-                onSaved={loadMemberDayData}
-                onLocked={loadMemberDayData}
+                onSaved={() => loadMemberDayData(true)}
+                onLocked={() => loadMemberDayData(false)}
               />
             )}
           </div>

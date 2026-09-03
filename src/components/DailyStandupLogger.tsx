@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, CheckCircle2, Clock, Copy, AlertCircle, Sparkles, Lock, Save, ChevronDown } from 'lucide-react';
 import { DailyTask, Project, TaskStatus } from '@/types/database';
-import { saveDailyTasks, submitAndLockDay, carryForwardYesterdayTasks } from '@/app/actions/standupActions';
+import { saveDailyTasks, submitAndLockDay, carryForwardYesterdayTasks, getDailyTasks } from '@/app/actions/standupActions';
 
 interface DailyStandupLoggerProps {
   memberId: string;
@@ -88,9 +88,7 @@ export function DailyStandupLogger({
     setMessage(null);
     try {
       const res = await saveDailyTasks(memberId, date, tasksToSave);
-      if (res.success) {
-        onSaved();
-      } else {
+      if (!res.success) {
         setMessage({ text: res.error || 'Failed to save changes.', type: 'error' });
       }
     } catch (err: unknown) {
@@ -108,7 +106,9 @@ export function DailyStandupLogger({
       if (res.success) {
         if (res.copiedCount > 0) {
           setMessage({ text: `Copied ${res.copiedCount} unfinished task(s) from previous working day!`, type: 'success' });
-          onSaved();
+          const dayData = await getDailyTasks(memberId, date);
+          setTasks(dayData.tasks);
+          onSaved?.();
         } else {
           setMessage({ text: 'No unfinished tasks to copy from previous working day.', type: 'success' });
         }
@@ -192,6 +192,7 @@ export function DailyStandupLogger({
         </div>
 
         <button
+          type="button"
           onClick={handleCopyYesterday}
           disabled={copyingYesterday}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition-colors disabled:opacity-50 cursor-pointer self-start sm:self-auto"
@@ -381,6 +382,7 @@ export function DailyStandupLogger({
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
+              type="button"
               onClick={() => saveDraft(tasks)}
               disabled={saving}
               className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -390,6 +392,7 @@ export function DailyStandupLogger({
             </button>
 
             <button
+              type="button"
               onClick={handleSubmitAndLock}
               disabled={submitting}
               className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
