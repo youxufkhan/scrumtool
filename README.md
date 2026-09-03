@@ -1,43 +1,57 @@
 # 🚀 ScrumTool
 
-> **Zero-Friction Daily Standups & Task Hours Tracker** for fast-moving agile teams.
+> **Zero-Friction Daily Standups, Sprint Tracking & Automated Timesheets** for modern engineering teams.
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-emerald)](https://supabase.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-blue)](https://tailwindcss.com/)
-[![Deployed on Vercel](https://img.shields.io/badge/Vercel-Deployed-black)](https://scrumtool-tawny.vercel.app)
+[![Live App](https://img.shields.io/badge/Production-scrum.yousufkhan.uk-indigo?style=for-the-badge)](https://scrum.yousufkhan.uk)
+[![Next.js](https://img.shields.io/badge/Next.js-14_(App_Router)-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL_(RLS)-emerald?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS_3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-31_Tests_Passing-6E9F18?style=for-the-badge&logo=vitest)](https://vitest.dev/)
 
 ---
 
 ## ✨ Features
 
-- ⚡ **Zero-Friction Identity:** 1-click name selector remembered in browser `localStorage`. No passwords to forget.
-- 🌅 **Morning Standup (< 30 seconds):** Rapid keyboard-friendly task input (press `Enter` to add consecutive tasks) + 1-click *"Copy Unfinished Tasks from Yesterday"*.
-- 🌇 **Evening Standup (< 1 minute):** Status toggles (`Done`, `In Progress`, `Blocked`), decimal hours (`0.5`, `1.25`, `0`), `+ Add Ad-hoc Task`, and a **"Submit & Lock"** button.
-- 🛡️ **Missing Hours Compliance Gate:** Prevents participating in today's standup if past working days have unentered hours (skipping weekends & holidays) until resolved.
-- 🔒 **Immutable Timesheets:** Once submitted, entries are locked to ensure accurate data integrity (with admin unlock override).
-- 📊 **Admin Dashboard & Analytics (`/admin`):**
-  - Daily team standup board with 1-click **"Copy for Slack / Teams"** markdown generator.
-  - Interactive Recharts charts for member hours, project allocation donut chart, and daily planned vs. ad-hoc trends.
-  - **Sanitized CSV Timesheet Export** with formula injection protection.
-  - Official holiday & team member manager.
+### 👤 Member Standup Experience
+- 🔐 **Secure 4-Digit PIN Authentication:** Quick and friction-free login with custom PIN setup on first access (default: `1234`). Passcodes are securely hashed using salted SHA-256 and sessions are managed via HTTP-only cookies.
+- 🌅 **Morning Standup (< 30s):** Rapid keyboard-first task planning (`Enter` to add consecutive tasks) + 1-click **"Copy Unfinished Tasks from Yesterday"**.
+- 🌆 **Evening Standup (< 1m):** Decimal hour entry (`0.5`, `1.25`, `0`), status toggles (`Done`, `In Progress`, `Blocked`), and **"Submit & Lock Day"**.
+- 🛡️ **Missing Hours Compliance Gate:** Automatically scans past working days (excluding weekends & holidays) and blocks current standups until unsubmitted hours are logged or marked as leave.
+- ⚡ **Zero-Flicker Optimistic UI:** Tasks are saved seamlessly in the background without disruptive full-page reloads or spinner unmounts.
+- 📅 **Smart Date Navigation:** Future date lockout prevents recording standups ahead of time, while previous working days remain accessible for retroactive logging.
+
+### 🛠️ Admin Console (`/admin`)
+- 📋 **Daily Team Board:** Real-time summary across all members with a 1-click **"Copy for Slack / Teams"** markdown generator.
+- 📊 **Analytics & Timesheets:** Interactive charts for total team hours, project allocation distribution, and planned vs. ad-hoc trends.
+- 📥 **Secure CSV Export:** Server-generated timesheet CSV export with formula injection sanitization.
+- 🌴 **Leave & PTO Management:** Schedule member leaves across date ranges with automatic weekend and holiday exclusion.
+- 🔑 **PIN Management & Submission Unlocks:** 1-click passcode reset for members and submission unlock overrides for corrections.
+
+---
+
+## 🔒 Security Architecture
+
+- **Strict Supabase Row-Level Security (RLS):** Insecure public `anon` policies are completely removed. Database operations are strictly mediated by Next.js Server Actions using the `SUPABASE_SERVICE_ROLE_KEY`.
+- **HTTP-Only Cookie Sessions:** Auth tokens are stored in secure, `httpOnly`, `sameSite: 'lax'` cookies rather than vulnerable `localStorage`/`sessionStorage`.
+- **Authorization Gates:** All administrative and member mutations enforce backend gate checks (`requireAdminAuth()` and `requireMemberAuth(memberId)`).
+- **Constant-Time Passcode Check:** Constant-time buffer comparisons (`crypto.timingSafeEqual`) prevent timing attack exploits.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Framework:** [Next.js 14](https://nextjs.org/) (App Router, Server Actions)
-- **Database:** [Supabase](https://supabase.com/) (PostgreSQL with Row Level Security)
+- **Database:** [Supabase](https://supabase.com/) (PostgreSQL with RLS)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/) + [Lucide Icons](https://lucide.dev/)
-- **Charts:** [Recharts](https://recharts.org/)
+- **Visualizations:** [Recharts](https://recharts.org/)
 - **Testing:** [Vitest](https://vitest.dev/)
 - **Package Manager:** `pnpm`
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quickstart & Setup
 
-### 1. Clone & Install Dependencies
+### 1. Clone & Install
 
 ```bash
 git clone https://github.com/youxufkhan/scrumtool.git
@@ -47,31 +61,43 @@ pnpm install
 
 ### 2. Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create `.env.local` in the project root:
 
 ```env
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_secret_service_role_key
+
+# Admin & Session Security
 ADMIN_PASSCODE=1234
-ADMIN_JWT_SECRET=your_admin_secret_key
+ADMIN_JWT_SECRET=your_long_random_salt_secret
 ```
 
-### 3. Run Database Migrations
+### 3. Database Migration
 
-Apply `supabase/schema.sql` to your Supabase SQL editor.
+Run the SQL script located in [`supabase/schema.sql`](supabase/schema.sql) in your Supabase SQL Editor.
 
-### 4. Start Development Server
+### 4. Run Locally
 
 ```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the member standup view, and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin console.
+- **Standup App:** [http://localhost:3000](http://localhost:3000)
+- **Admin Dashboard:** [http://localhost:3000/admin](http://localhost:3000/admin)
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Testing
+
+The codebase includes an extensive Vitest test suite covering action authorization, passcode hashing, leave calculations, and missing hours compliance checks:
 
 ```bash
 pnpm test
 ```
+
+---
+
+## 🤖 AI Agent Guidelines
+
+For AI agents working on this repository, consult [`AGENTS.md`](AGENTS.md) for architectural invariants, God node abstractions, and coding standards.
