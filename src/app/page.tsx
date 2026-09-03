@@ -109,7 +109,7 @@ export default function MemberHomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       {/* Header */}
       <Header
         currentDate={currentDate}
@@ -131,15 +131,16 @@ export default function MemberHomePage() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-            <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold text-slate-500">Loading your standup...</span>
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500 gap-3">
+            <div className="w-8 h-8 border-3 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading your standup...</span>
           </div>
         ) : !currentMember ? (
           <div className="text-center py-20">
             <button
+              type="button"
               onClick={() => setShowMemberPicker(true)}
-              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-md hover:bg-indigo-700 transition-colors cursor-pointer"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-md transition-colors cursor-pointer"
             >
               Select Your Name to Begin
             </button>
@@ -160,8 +161,8 @@ export default function MemberHomePage() {
           <div className="space-y-4">
             {/* Holiday or Weekend Banner */}
             {holiday && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
-                <Palmtree className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center gap-3">
+                <Palmtree className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <div className="text-xs font-medium">
                   <strong>🌴 Official Holiday: {holiday.name}</strong> — Standup is not required today, but you can still record tasks.
                 </div>
@@ -169,8 +170,8 @@ export default function MemberHomePage() {
             )}
 
             {isWeekend && !holiday && (
-              <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-indigo-900 flex items-center gap-3">
-                <Sun className="w-5 h-5 text-indigo-600 shrink-0" />
+              <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-indigo-900 dark:text-indigo-200 flex items-center gap-3">
+                <Sun className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <div className="text-xs font-medium">
                   <strong>🎉 Weekend</strong> — Standup is not mandatory, but feel free to record any weekend tasks.
                 </div>
@@ -202,10 +203,10 @@ export default function MemberHomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 text-center text-xs text-slate-400 dark:text-slate-500 transition-colors duration-200">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>ScrumTool — Zero-friction daily standups & timesheets</span>
-          <span className="font-mono text-[11px] text-slate-400">Powered by Next.js & Supabase</span>
+          <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">Powered by Next.js & Supabase</span>
         </div>
       </footer>
     </div>

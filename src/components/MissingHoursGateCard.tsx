@@ -122,17 +122,17 @@ export function MissingHoursGateCard({
   const totalHours = tasks.reduce((sum, t) => sum + (Number(t.hours_spent) || 0), 0);
 
   return (
-    <div className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-white border-2 border-amber-300 rounded-3xl shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
+    <div className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-white dark:bg-slate-900 border-2 border-amber-300 dark:border-amber-700/80 rounded-3xl shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
       {/* Banner */}
       <div className="flex items-start gap-4 mb-6">
-        <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
+        <div className="p-3 bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded-2xl shrink-0">
           <AlertTriangle className="w-6 h-6" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Missing Hours Required</h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Missing Hours Required</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Hi <strong>{memberName}</strong>, you have unsubmitted hours from{' '}
-            <strong className="text-amber-800">
+            <strong className="text-amber-800 dark:text-amber-300">
               {pendingDates.length} previous working day{pendingDates.length > 1 ? 's' : ''}
             </strong>
             . Please log your hours below to unlock today&apos;s standup.
@@ -148,14 +148,15 @@ export function MissingHoursGateCard({
 
           return (
             <button
+              type="button"
               key={date}
               onClick={() => setActiveDateIndex(idx)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 isSelected
                   ? 'bg-amber-500 text-white shadow-xs'
                   : isCompleted
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
@@ -166,34 +167,35 @@ export function MissingHoursGateCard({
       </div>
 
       {/* Task List for Current Pending Date */}
-      <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 mb-6">
-        <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700/60 mb-6">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
           <div>
-            <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Logging Hours For</span>
-            <h3 className="font-bold text-slate-900 text-base">
+            <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Logging Hours For</span>
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
               {currentDate && format(parseISO(currentDate), 'EEEE, MMMM d, yyyy')}
             </h3>
           </div>
 
           <button
+            type="button"
             onClick={handleMarkLeave}
-            className="flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg transition-colors"
           >
-            <Palmtree className="w-3.5 h-3.5 text-emerald-600" />
+            <Palmtree className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>I Was On Leave</span>
           </button>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs rounded-xl font-medium">
             {errorMessage}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center py-8 text-slate-400 text-sm">Loading tasks...</div>
+          <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">Loading tasks...</div>
         ) : tasks.length === 0 ? (
-          <div className="text-center py-6 text-slate-500 text-xs">
+          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
             No tasks recorded for this day. Click submit below to confirm 0 hours or mark as leave.
           </div>
         ) : (
@@ -201,7 +203,7 @@ export function MissingHoursGateCard({
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -214,12 +216,12 @@ export function MissingHoursGateCard({
                       </span>
                     )}
                     {task.is_ad_hoc && (
-                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
                         Ad-hoc
                       </span>
                     )}
                   </div>
-                  <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{task.title}</p>
                 </div>
 
                 {/* Status Toggle & Hours Input */}
@@ -227,7 +229,7 @@ export function MissingHoursGateCard({
                   <select
                     value={task.status}
                     onChange={(e) => handleStatusChange(task.id, e.target.value as DailyTask['status'])}
-                    className="text-xs font-semibold border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="done">✅ Done</option>
                     <option value="in_progress">🔄 In Progress</option>
@@ -243,9 +245,9 @@ export function MissingHoursGateCard({
                       placeholder="0.0"
                       value={task.hours_spent !== null && task.hours_spent !== undefined ? task.hours_spent : ''}
                       onChange={(e) => handleHourChange(task.id, e.target.value)}
-                      className="w-16 text-center text-xs font-bold border border-slate-200 rounded-lg py-1.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white"
+                      className="w-16 text-center text-xs font-bold border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                     />
-                    <span className="text-xs text-slate-400 font-medium">hrs</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">hrs</span>
                   </div>
                 </div>
               </div>
@@ -254,17 +256,18 @@ export function MissingHoursGateCard({
         )}
 
         {/* Total for day */}
-        <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 font-semibold">
+        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-semibold">
           <span>Day Total:</span>
-          <span className="text-sm font-bold text-slate-900">{totalHours.toFixed(1)} hrs</span>
+          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{totalHours.toFixed(1)} hrs</span>
         </div>
       </div>
 
       {/* Action Button */}
       <button
+        type="button"
         onClick={handleSubmitPastDay}
         disabled={submitting || loading}
-        className="w-full py-3.5 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer"
+        className="w-full py-3.5 px-6 rounded-2xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer"
       >
         {submitting ? (
           <span>Saving & Locking...</span>

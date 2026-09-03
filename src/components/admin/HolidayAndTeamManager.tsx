@@ -222,11 +222,12 @@ export function HolidayAndTeamManager() {
   return (
     <div className="space-y-6">
       {/* Sub Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
         <button
+          type="button"
           onClick={() => setActiveTab('holidays')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'holidays' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            activeTab === 'holidays' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
           <Palmtree className="w-3.5 h-3.5" />
@@ -234,9 +235,10 @@ export function HolidayAndTeamManager() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('leaves')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'leaves' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            activeTab === 'leaves' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
@@ -244,9 +246,10 @@ export function HolidayAndTeamManager() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('members')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'members' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            activeTab === 'members' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -254,9 +257,10 @@ export function HolidayAndTeamManager() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('projects')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'projects' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            activeTab === 'projects' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
           <Briefcase className="w-3.5 h-3.5" />
@@ -268,12 +272,12 @@ export function HolidayAndTeamManager() {
         <div
           className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between border animate-in fade-in duration-200 ${
             message.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              : 'bg-red-50 text-red-800 border-red-200'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60'
+              : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/60'
           }`}
         >
           <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2">
+          <button type="button" onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ml-2">
             ✕
           </button>
         </div>
@@ -283,42 +287,42 @@ export function HolidayAndTeamManager() {
       {activeTab === 'holidays' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Add Holiday Form */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs h-fit">
-            <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
-              <Palmtree className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs h-fit">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+              <Palmtree className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Add Official Holiday</span>
             </h3>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Holidays automatically exempt all team members from standup requirements.
             </p>
 
             <form onSubmit={handleAddHoliday} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Holiday Date</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Holiday Date</label>
                 <input
                   type="date"
                   required
                   value={newHolidayDate}
                   onChange={(e) => setNewHolidayDate(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden focus:bg-white"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Holiday Name</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Holiday Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Labor Day, Company Retreat"
                   value={newHolidayName}
                   onChange={(e) => setNewHolidayName(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden focus:bg-white"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                className="w-full py-2.5 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Save Holiday</span>
@@ -327,27 +331,28 @@ export function HolidayAndTeamManager() {
           </div>
 
           {/* Holiday List */}
-          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Configured Holidays</h3>
+          <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Configured Holidays</h3>
 
             {loading ? (
-              <div className="py-8 text-center text-xs text-slate-400">Loading...</div>
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">Loading...</div>
             ) : holidays.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
                 No custom holidays added yet. Weekends are automatically recognized as days off.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {holidays.map((h) => (
                   <div key={h.id} className="py-3 flex items-center justify-between gap-4">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{h.name}</h4>
-                      <span className="text-[11px] font-medium text-slate-500">{h.date}</span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{h.name}</h4>
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{h.date}</span>
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleDeleteHoliday(h.id, h.name)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                       title="Delete holiday"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -364,22 +369,22 @@ export function HolidayAndTeamManager() {
       {activeTab === 'leaves' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Schedule Leave Form */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs h-fit">
-            <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs h-fit">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Schedule Member Leave</span>
             </h3>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Marks member on leave for a date or range, exempting them from standup compliance.
             </p>
 
             <form onSubmit={handleScheduleLeave} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Team Member</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Team Member</label>
                 <select
                   value={leaveMemberId}
                   onChange={(e) => setLeaveMemberId(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 >
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -390,7 +395,7 @@ export function HolidayAndTeamManager() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Start Date</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Start Date</label>
                 <input
                   type="date"
                   required
@@ -399,36 +404,36 @@ export function HolidayAndTeamManager() {
                     setLeaveStartDate(e.target.value);
                     if (!leaveEndDate) setLeaveEndDate(e.target.value);
                   }}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">End Date</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">End Date</label>
                 <input
                   type="date"
                   required
                   value={leaveEndDate}
                   onChange={(e) => setLeaveEndDate(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Leave Reason (Optional)</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Leave Reason (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Annual Vacation, Medical Leave"
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={leaveSubmitting}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50 mt-2"
               >
                 <Check className="w-4 h-4" />
                 <span>{leaveSubmitting ? 'Scheduling...' : 'Confirm Member Leave'}</span>
@@ -437,17 +442,17 @@ export function HolidayAndTeamManager() {
           </div>
 
           {/* Scheduled Leaves List */}
-          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Active & Scheduled Leaves</h3>
+          <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Active & Scheduled Leaves</h3>
 
             {loading ? (
-              <div className="py-8 text-center text-xs text-slate-400">Loading...</div>
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">Loading...</div>
             ) : scheduledLeaves.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
                 No member leaves recorded yet.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto pr-1">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto pr-1">
                 {scheduledLeaves.map((l) => (
                   <div key={l.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -458,19 +463,20 @@ export function HolidayAndTeamManager() {
                         {l.member?.name ? l.member.name.slice(0, 1).toUpperCase() : 'M'}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
                           {l.member?.name || 'Unknown Member'}
                         </h4>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                          <span className="font-semibold text-slate-700">{l.date}</span>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{l.date}</span>
                           {l.leave_reason && <span>• {l.leave_reason}</span>}
                         </div>
                       </div>
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleCancelLeave(l.id, l.member?.name, l.date)}
-                      className="text-[11px] font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2.5 py-1 rounded-lg border border-red-100 transition-colors cursor-pointer"
+                      className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 px-2.5 py-1 rounded-lg border border-red-100 dark:border-red-900/60 transition-colors cursor-pointer"
                     >
                       Cancel Leave
                     </button>
@@ -486,38 +492,38 @@ export function HolidayAndTeamManager() {
       {activeTab === 'members' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Add Member Form */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs h-fit">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs h-fit">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>Add Team Member</span>
             </h3>
 
             <form onSubmit={handleAddMember} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Full Name</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Taylor Morgan"
                   value={newMemberName}
                   onChange={(e) => setNewMemberName(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Role / Job Title</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Role / Job Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Frontend Engineer"
                   value={newMemberRole}
                   onChange={(e) => setNewMemberRole(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Avatar Color</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Avatar Color</label>
                 <div className="flex items-center gap-2">
                   {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'].map((color) => (
                     <button
@@ -535,7 +541,7 @@ export function HolidayAndTeamManager() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer mt-2"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer mt-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Member</span>
@@ -544,14 +550,14 @@ export function HolidayAndTeamManager() {
           </div>
 
           {/* Member List */}
-          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Team Directory ({members.length})</h3>
+          <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Team Directory ({members.length})</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {members.map((m) => (
                 <div
                   key={m.id}
-                  className="p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 bg-slate-50/50"
+                  className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -561,14 +567,15 @@ export function HolidayAndTeamManager() {
                       {m.name.slice(0, 1).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{m.name}</h4>
-                      <span className="text-[11px] text-slate-500">{m.role}</span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{m.name}</h4>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{m.role}</span>
                     </div>
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => handleResetPasscode(m.id, m.name)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                     title="Reset member passcode back to 1234"
                   >
                     <RotateCcw className="w-3 h-3" />
@@ -585,27 +592,27 @@ export function HolidayAndTeamManager() {
       {activeTab === 'projects' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Add Project Form */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs h-fit">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-indigo-600" />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs h-fit">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>Add Project Tag</span>
             </h3>
 
             <form onSubmit={handleAddProject} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Project Name</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Project Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Infrastructure"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden"
+                  className="w-full text-xs font-semibold px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">Tag Color</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Tag Color</label>
                 <div className="flex items-center gap-2">
                   {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'].map((color) => (
                     <button
@@ -623,7 +630,7 @@ export function HolidayAndTeamManager() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer mt-2"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer mt-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Project</span>
@@ -632,17 +639,17 @@ export function HolidayAndTeamManager() {
           </div>
 
           {/* Project List */}
-          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-5 sm:p-6">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Active Projects ({projects.length})</h3>
+          <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Active Projects ({projects.length})</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {projects.map((p) => (
                 <div
                   key={p.id}
-                  className="p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3 bg-slate-50/50"
+                  className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-800/40"
                 >
                   <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: p.color || '#6366F1' }} />
-                  <span className="text-xs font-bold text-slate-900">{p.name}</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{p.name}</span>
                 </div>
               ))}
             </div>
