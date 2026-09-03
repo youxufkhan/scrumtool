@@ -66,18 +66,24 @@ export default function MemberHomePage() {
     initApp();
   }, []);
 
-  // 2. Load Gate & Daily Data when member or date changes
-  const loadMemberDayData = useCallback(async (isSilent = false) => {
+  // 2. Load Gate Data (only depends on member and todayDate, not currentDate)
+  const loadGate = useCallback(async () => {
+    if (!currentMember) return;
+    try {
+      const gate = await checkMemberGate(currentMember.id, todayDate);
+      setIsBlocked(gate.isBlocked);
+      setPendingDates(gate.pendingDates);
+    } catch (err) {
+      console.error('Failed to check member gate compliance', err);
+    }
+  }, [currentMember, todayDate]);
+
+  // 3. Load Daily Tasks for the selected currentDate
+  const loadDayData = useCallback(async (isSilent = false) => {
     if (!currentMember) return;
     if (!isSilent) setLoading(true);
 
     try {
-      // Check gate
-      const gate = await checkMemberGate(currentMember.id, todayDate);
-      setIsBlocked(gate.isBlocked);
-      setPendingDates(gate.pendingDates);
-
-      // Load tasks for currentDate
       const dayData = await getDailyTasks(currentMember.id, currentDate);
       setTasks(dayData.tasks);
       setSubmission(dayData.submission);
@@ -85,17 +91,25 @@ export default function MemberHomePage() {
       setHoliday(dayData.holiday);
       setIsWeekend(dayData.isWeekend);
     } catch (err) {
-      console.error('Failed to load member standup data', err);
+      console.error('Failed to load daily standup tasks', err);
     } finally {
       if (!isSilent) setLoading(false);
     }
-  }, [currentMember, currentDate, todayDate]);
+  }, [currentMember, currentDate]);
 
+  // Execute gate check when member changes
   useEffect(() => {
     if (currentMember) {
-      loadMemberDayData();
+      loadGate();
     }
-  }, [currentMember, loadMemberDayData]);
+  }, [currentMember, loadGate]);
+
+  // Execute day data fetch when member or currentDate changes
+  useEffect(() => {
+    if (currentMember) {
+      loadDayData();
+    }
+  }, [currentMember, loadDayData]);
 
   const handleSelectMember = (member: Member) => {
     setCurrentMember(member);
@@ -153,7 +167,8 @@ export default function MemberHomePage() {
             pendingDates={pendingDates}
             onResolved={() => {
               setIsBlocked(false);
-              loadMemberDayData();
+              loadGate();
+              loadDayData();
             }}
           />
         ) : (
@@ -194,8 +209,11 @@ export default function MemberHomePage() {
                 date={currentDate}
                 initialTasks={tasks}
                 projects={projects}
-                onSaved={() => loadMemberDayData(true)}
-                onLocked={() => loadMemberDayData(false)}
+                onSaved={() => loadDayData(true)}
+                onLocked={() => {
+                  loadDayData(false);
+                  loadGate();
+                }}
               />
             )}
           </div>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { GlobalLoader } from "@/components/GlobalLoader";
 
 export const metadata: Metadata = {
   title: "ScrumTool — Frictionless Daily Standups & Hours Tracker",
@@ -31,6 +33,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: foucScript }} />
       </head>
       <body className="antialiased min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+        <Suspense fallback={null}>
+          <GlobalLoader />
+        </Suspense>
         <ThemeProvider>
           {children}
         </ThemeProvider>
