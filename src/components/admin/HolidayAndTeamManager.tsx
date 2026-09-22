@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
   RotateCcw,
+  Target,
 } from 'lucide-react';
 import { Member, Project, Holiday, DailySubmission } from '@/types/database';
 import { getMembers, getProjects, getHolidaysList } from '@/app/actions/standupActions';
@@ -28,6 +29,7 @@ import {
   adminCancelMemberLeave,
   exportDatabaseBackup,
 } from '@/app/actions/adminActions';
+import { AdminRoadmapModal } from './AdminRoadmapModal';
 
 export function HolidayAndTeamManager() {
   const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects' | 'database'>('holidays');
@@ -38,6 +40,7 @@ export function HolidayAndTeamManager() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [scheduledLeaves, setScheduledLeaves] = useState<(DailySubmission & { member?: Member })[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [roadmapMember, setRoadmapMember] = useState<Member | null>(null);
 
   // Forms: Member
   const [newMemberName, setNewMemberName] = useState('');
@@ -617,15 +620,27 @@ export function HolidayAndTeamManager() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleResetPasscode(m.id, m.name)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    title="Reset member passcode back to 1234"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset PIN</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setRoadmapMember(m)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800/60 transition-colors cursor-pointer"
+                      title="Manage member roadmap & goals"
+                    >
+                      <Target className="w-3 h-3" />
+                      <span>Roadmap</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleResetPasscode(m.id, m.name)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                      title="Reset member passcode back to 1234"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset PIN</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -716,6 +731,14 @@ export function HolidayAndTeamManager() {
             <RotateCcw className="w-4 h-4" /> Download Full Backup
           </button>
         </div>
+      )}
+
+      {/* Member Roadmap Modal */}
+      {roadmapMember && (
+        <AdminRoadmapModal
+          member={roadmapMember}
+          onClose={() => setRoadmapMember(null)}
+        />
       )}
     </div>
   );
