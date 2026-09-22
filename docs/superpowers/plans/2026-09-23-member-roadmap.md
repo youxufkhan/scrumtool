@@ -230,7 +230,7 @@ git commit -m "feat: implement roadmap server actions"
 
 ---
 
-### Task 4: Admin UI for Roadmaps
+### Task 3: Admin UI for Roadmaps
 
 **Files:**
 - Create: `src/components/admin/AdminRoadmapModal.tsx`
@@ -261,7 +261,7 @@ git commit -m "feat: add admin ui for managing roadmaps"
 
 ---
 
-### Task 5: Member UI for Roadmaps
+### Task 4: Member UI for Roadmaps
 
 **Files:**
 - Create: `src/components/standup/MemberRoadmapTab.tsx`
