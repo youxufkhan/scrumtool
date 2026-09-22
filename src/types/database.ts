@@ -54,6 +54,21 @@ export interface Holiday {
   created_at: string;
 }
 
+export interface MemberRoadmap {
+  id: string;
+  member_id: string;
+  title: string;
+  tech_skills_score: number | null;
+  soft_skills_score: number | null;
+  learning_score: number | null;
+  admin_notes: string | null;
+  goals_30_days: string | null;
+  goals_60_days: string | null;
+  goals_90_days: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface StandupMemberSummary {
   member: Member;
   submission: DailySubmission | null;
