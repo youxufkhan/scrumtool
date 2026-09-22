@@ -26,10 +26,11 @@ import {
   adminMarkMemberLeaveRange,
   adminGetMemberLeaves,
   adminCancelMemberLeave,
+  exportDatabaseBackup,
 } from '@/app/actions/adminActions';
 
 export function HolidayAndTeamManager() {
-  const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects'>('holidays');
+  const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects' | 'database'>('holidays');
 
   // Lists
   const [members, setMembers] = useState<Member[]>([]);
@@ -219,6 +220,29 @@ export function HolidayAndTeamManager() {
     }
   };
 
+  const handleDownloadBackup = async () => {
+    try {
+      const res = await exportDatabaseBackup();
+      if (res.success && res.data) {
+        const json = JSON.stringify(res.data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scrumtool_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Backup downloaded successfully!');
+      } else {
+        alert('Backup failed: ' + (res.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Backup error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Sub Tabs */}
@@ -265,6 +289,18 @@ export function HolidayAndTeamManager() {
         >
           <Briefcase className="w-3.5 h-3.5" />
           <span>Projects</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('database')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'database'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4" /> Database
         </button>
       </div>
 
@@ -654,6 +690,22 @@ export function HolidayAndTeamManager() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'database' && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Database Backup</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Export all data from the database into a secure JSON file. You can use this file for disaster recovery or migrations.
+          </p>
+          <button
+            type="button"
+            onClick={handleDownloadBackup}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" /> Download Full Backup
+          </button>
         </div>
       )}
     </div>
