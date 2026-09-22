@@ -703,6 +703,11 @@ export async function exportDatabaseBackup(): Promise<ActionResult<any>> {
         db.from('holidays').select('*'),
       ]);
 
+      if (members.error || projects.error || submissions.error || tasks.error || holidays.error) {
+        const firstError = members.error || projects.error || submissions.error || tasks.error || holidays.error;
+        return { success: false, error: firstError?.message || 'Failed to export table data' };
+      }
+
       const backup = {
         timestamp: new Date().toISOString(),
         data: {

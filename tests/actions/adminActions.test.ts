@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockStore } from '@/lib/db';
+import * as serverDb from '@/lib/serverDb';
 import { clearTestCookies } from '@/lib/authUtils';
 import {
   getAdminDailyStandup,
@@ -236,6 +237,49 @@ describe('adminActions', () => {
     expect(res.data.data.daily_submissions).toEqual(mockStore.submissions);
     expect(res.data.data.daily_tasks).toEqual(mockStore.tasks);
     expect(res.data.data.holidays).toEqual(mockStore.holidays);
+  });
+
+  it('returns an error if any table query fails during database backup', async () => {
+    await verifyMemberPasscode('m-1', '1234');
+
+    const mockSupabase = {
+      from: (table: string) => ({
+        select: (fields?: string) => {
+          if (fields === 'is_admin') {
+            return {
+              eq: () => ({
+                single: async () => ({ data: { is_admin: true }, error: null }),
+              }),
+            };
+          }
+          if (fields === 'passcode_hash, has_custom_passcode') {
+            return {
+              eq: () => ({
+                single: async () => ({
+                  data: {
+                    passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50',
+                    has_custom_passcode: false,
+                  },
+                  error: null,
+                }),
+              }),
+            };
+          }
+          if (table === 'daily_tasks') {
+            return Promise.resolve({ data: null, error: { message: 'Database connection timeout on tasks table' } });
+          }
+          return Promise.resolve({ data: [], error: null });
+        },
+      }),
+    };
+
+    const spy = vi.spyOn(serverDb, 'getServerSupabaseClient').mockReturnValue(mockSupabase as any);
+
+    const res = await exportDatabaseBackup();
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('Database connection timeout on tasks table');
+
+    spy.mockRestore();
   });
 });
 
