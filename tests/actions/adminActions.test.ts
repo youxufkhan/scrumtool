@@ -15,6 +15,7 @@ import {
   adminGetMemberLeaves,
   adminCancelMemberLeave,
   exportAdminCsvData,
+  exportDatabaseBackup,
 } from '@/app/actions/adminActions';
 import { verifyMemberPasscode, changeMemberPasscode, checkMemberGate, memberLogout } from '@/app/actions/standupActions';
 
@@ -197,4 +198,44 @@ describe('adminActions', () => {
     await memberLogout();
     await expect(getAdminDailyStandup('2026-08-24')).rejects.toThrow('UNAUTHORIZED');
   });
+
+  it('allows an admin to export a full database backup and rejects unauthenticated users', async () => {
+    // 1. Unauthenticated user is rejected
+    const unauthRes = await exportDatabaseBackup();
+    expect(unauthRes.success).toBe(false);
+    expect(unauthRes.error).toBe('UNAUTHORIZED');
+
+    // 2. Non-admin user is rejected
+    await verifyMemberPasscode('m-2', '1234');
+    const nonAdminRes = await exportDatabaseBackup();
+    expect(nonAdminRes.success).toBe(false);
+    expect(nonAdminRes.error).toBe('UNAUTHORIZED');
+
+    // 3. Admin user succeeds and receives complete database dump
+    await verifyMemberPasscode('m-1', '1234');
+    mockStore.tasks.push({
+      id: 't-backup-1',
+      member_id: 'm-1',
+      date: '2026-08-24',
+      title: 'Database backup test task',
+      status: 'done',
+      hours_spent: 2.5,
+      is_ad_hoc: false,
+      order_index: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const res = await exportDatabaseBackup();
+    expect(res.success).toBe(true);
+    expect(res.data).toBeDefined();
+    expect(res.data.timestamp).toBeDefined();
+    expect(res.data.data).toBeDefined();
+    expect(res.data.data.members).toEqual(mockStore.members);
+    expect(res.data.data.projects).toEqual(mockStore.projects);
+    expect(res.data.data.daily_submissions).toEqual(mockStore.submissions);
+    expect(res.data.data.daily_tasks).toEqual(mockStore.tasks);
+    expect(res.data.data.holidays).toEqual(mockStore.holidays);
+  });
 });
+

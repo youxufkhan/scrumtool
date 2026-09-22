@@ -683,3 +683,56 @@ export async function exportAdminCsvData(
 
   return { success: true, data: allTasks };
 }
+
+/**
+ * Admin Action: Export complete database backup
+ */
+export async function exportDatabaseBackup(): Promise<ActionResult<any>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED' };
+  }
+
+  const db = getServerSupabaseClient();
+  if (db) {
+    try {
+      const [members, projects, submissions, tasks, holidays] = await Promise.all([
+        db.from('members').select('*'),
+        db.from('projects').select('*'),
+        db.from('daily_submissions').select('*'),
+        db.from('daily_tasks').select('*'),
+        db.from('holidays').select('*'),
+      ]);
+
+      const backup = {
+        timestamp: new Date().toISOString(),
+        data: {
+          members: members.data || [],
+          projects: projects.data || [],
+          daily_submissions: submissions.data || [],
+          daily_tasks: tasks.data || [],
+          holidays: holidays.data || [],
+        },
+      };
+
+      return { success: true, data: backup };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  } else {
+    // mockStore export for testing
+    return {
+      success: true,
+      data: {
+        timestamp: new Date().toISOString(),
+        data: {
+          members: mockStore.members,
+          projects: mockStore.projects,
+          daily_submissions: mockStore.submissions,
+          daily_tasks: mockStore.tasks,
+          holidays: mockStore.holidays,
+        },
+      },
+    };
+  }
+}
+
