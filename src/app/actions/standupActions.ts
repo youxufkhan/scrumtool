@@ -52,7 +52,7 @@ export async function getMembers(): Promise<Member[]> {
   if (supabase) {
     const { data, error } = await supabase
       .from('members')
-      .select('id, name, role, avatar_color, is_active, has_custom_passcode, joined_at, created_at')
+      .select('id, name, role, avatar_color, is_admin, is_active, has_custom_passcode, joined_at, created_at')
       .eq('is_active', true)
       .order('name');
     if (!error && data) return data as Member[];
