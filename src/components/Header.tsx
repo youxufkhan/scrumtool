@@ -139,14 +139,16 @@ export function Header({
             </button>
           )}
 
-          <Link
-            href="/admin"
-            className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-lg transition-colors"
-            title="Admin Dashboard"
-          >
-            <Shield className="w-4 h-4" />
-            <span className="hidden md:inline">Admin</span>
-          </Link>
+          {currentMember?.is_admin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-lg transition-colors"
+              title="Admin Dashboard"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="hidden md:inline">Admin</span>
+            </Link>
+          )}
 
           <ThemeToggle />
         </div>
