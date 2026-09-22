@@ -5,6 +5,7 @@ export interface Member {
   name: string;
   role: string;
   avatar_color: string;
+  is_admin: boolean;
   is_active: boolean;
   has_custom_passcode?: boolean;
   passcode_hash?: string;

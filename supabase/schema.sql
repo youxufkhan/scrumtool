@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS members (
     name TEXT NOT NULL UNIQUE,
     role TEXT DEFAULT 'Engineer',
     avatar_color TEXT DEFAULT '#3B82F6',
+    is_admin BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     passcode_hash TEXT DEFAULT '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50',
     has_custom_passcode BOOLEAN DEFAULT false,
