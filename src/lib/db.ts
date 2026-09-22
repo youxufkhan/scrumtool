@@ -85,5 +85,4 @@ export function resetMockStore(): void {
   mockStore.clear();
   mockStore.members = initialStore.members.map((m) => ({ ...m }));
   mockStore.projects = initialStore.projects.map((p) => ({ ...p }));
-  mockStore.memberRoadmaps = [];
 }

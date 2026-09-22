@@ -34,7 +34,12 @@ export async function saveMemberRoadmap(
     return { success: true };
   }
 
-  await supabase.from('member_roadmaps').update({ is_active: false }).eq('member_id', data.member_id);
+  const { error: updateError } = await supabase
+    .from('member_roadmaps')
+    .update({ is_active: false })
+    .eq('member_id', data.member_id);
+  if (updateError) return { success: false, error: updateError.message };
+
   const { error } = await supabase.from('member_roadmaps').insert([{ ...data, is_active: true }]);
   if (error) return { success: false, error: error.message };
   return { success: true };

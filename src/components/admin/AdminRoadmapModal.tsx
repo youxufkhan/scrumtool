@@ -168,7 +168,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
               onClick={() => onChange(num)}
               className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                 isSelected
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs scale-102'
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm scale-[1.02]'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-slate-700'
               }`}
             >
@@ -182,7 +182,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -194,7 +194,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
         <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-sm font-bold shadow-xs shrink-0"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0"
               style={{ backgroundColor: member.avatar_color || '#3B82F6' }}
             >
               {member.name.slice(0, 1).toUpperCase()}
@@ -231,7 +231,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
             onClick={() => setActiveTab('create')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'create'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -244,7 +244,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'history'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -302,7 +302,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                   placeholder="e.g. Q4 2026 Growth & Mastery Plan"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs font-semibold px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-600 transition-colors"
+                  className="w-full text-xs font-semibold px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors"
                 />
               </div>
 
@@ -343,7 +343,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                   placeholder="Key observations, strengths, improvement areas, and career coaching notes..."
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
-                  className="w-full text-xs font-medium px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-600 transition-colors resize-y leading-relaxed"
+                  className="w-full text-xs font-medium px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
                 />
               </div>
 
@@ -365,7 +365,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                     placeholder="Milestones for Month 1 (e.g. Ramp up on new repository, resolve 5 assigned backlog tickets...)"
                     value={goals30}
                     onChange={(e) => setGoals30(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-600 transition-colors resize-y leading-relaxed"
+                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
                   />
                 </div>
 
@@ -380,7 +380,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                     placeholder="Milestones for Month 2 (e.g. Lead end-to-end implementation of the analytics feature...)"
                     value={goals60}
                     onChange={(e) => setGoals60(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-600 transition-colors resize-y leading-relaxed"
+                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
                   />
                 </div>
 
@@ -395,7 +395,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                     placeholder="Milestones for Month 3 (e.g. Propose and document architecture RFC, mentor junior team members...)"
                     value={goals90}
                     onChange={(e) => setGoals90(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-600 transition-colors resize-y leading-relaxed"
+                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
                   />
                 </div>
               </div>
@@ -412,7 +412,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
@@ -464,7 +464,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                       key={roadmap.id}
                       className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                         roadmap.is_active
-                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
+                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-sm'
                           : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
                       }`}
                     >

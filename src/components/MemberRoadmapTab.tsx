@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Compass,
   Target,
@@ -14,6 +14,8 @@ import {
   Calendar,
   Star,
   FileText,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { MemberRoadmap } from '@/types/database';
 import { getActiveRoadmap } from '@/app/actions/roadmapActions';
@@ -92,32 +94,25 @@ function ScoreCard({
 export function MemberRoadmapTab({ memberId }: MemberRoadmapTabProps) {
   const [roadmap, setRoadmap] = useState<MemberRoadmap | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const fetchRoadmap = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const data = await getActiveRoadmap(memberId);
+      setRoadmap(data);
+    } catch (err: any) {
+      console.error('Failed to load active roadmap', err);
+      setFetchError(err?.message || 'Failed to load your roadmap. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [memberId]);
 
   useEffect(() => {
-    let isCancelled = false;
-    setLoading(true);
-
-    getActiveRoadmap(memberId)
-      .then((data) => {
-        if (!isCancelled) {
-          setRoadmap(data);
-        }
-      })
-      .catch((err) => {
-        if (!isCancelled) {
-          console.error('Failed to load active roadmap', err);
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [memberId]);
+    fetchRoadmap();
+  }, [fetchRoadmap]);
 
   if (loading) {
     return (
@@ -126,6 +121,30 @@ export function MemberRoadmapTab({ memberId }: MemberRoadmapTabProps) {
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
           Loading your roadmap...
         </span>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 border border-red-200 dark:border-red-900/50 shadow-sm flex flex-col items-center justify-center text-center">
+        <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mb-4">
+          <AlertCircle className="w-7 h-7" />
+        </div>
+        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1.5">
+          Failed to Load Roadmap
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-4">
+          {fetchError}
+        </p>
+        <button
+          type="button"
+          onClick={() => fetchRoadmap()}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Try Again</span>
+        </button>
       </div>
     );
   }
