@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { format, parseISO, subDays, addDays } from 'date-fns';
+import { format, parseISO, subDays, addDays, endOfWeek, startOfWeek } from 'date-fns';
 import {
   Calendar,
   ChevronLeft,
@@ -17,8 +17,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { DailyStandupReport } from '@/types/database';
-import { getAdminDailyStandup, unlockSubmission } from '@/app/actions/adminActions';
-import { formatSlackStandup } from '@/lib/slackUtils';
+import { getAdminDailyStandup, getAdminWeeklyStandup, unlockSubmission } from '@/app/actions/adminActions';
+import { formatSlackStandup, formatSlackWeeklyStandup } from '@/lib/slackUtils';
 
 interface AdminDailyBoardProps {
   initialDate: string;
@@ -29,6 +29,7 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
   const [report, setReport] = useState<DailyStandupReport | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [copiedSlack, setCopiedSlack] = useState<boolean>(false);
+  const [copiedWeeklySlack, setCopiedWeeklySlack] = useState<boolean>(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const loadReport = async (date: string) => {
@@ -54,6 +55,20 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
     navigator.clipboard.writeText(text);
     setCopiedSlack(true);
     setTimeout(() => setCopiedSlack(false), 2500);
+  };
+
+  const handleCopyWeeklySlack = async () => {
+    const weekStart = format(startOfWeek(parseISO(selectedDate), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const weekEnd = format(endOfWeek(parseISO(selectedDate), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+
+    try {
+      const reports = await getAdminWeeklyStandup(weekStart, weekEnd);
+      await navigator.clipboard.writeText(formatSlackWeeklyStandup(reports, weekStart, weekEnd));
+      setCopiedWeeklySlack(true);
+      setTimeout(() => setCopiedWeeklySlack(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy weekly standup', err);
+    }
   };
 
   const handleUnlock = async (memberId: string, memberName: string) => {
@@ -85,9 +100,15 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm font-bold text-slate-900 dark:text-slate-100">
+          <label className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer">
             <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>{format(parseISO(selectedDate), 'EEEE, MMMM d, yyyy')}</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              aria-label="Select admin standup date"
+              className="bg-transparent focus:outline-hidden text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
+            />
             {report?.isWeekend && (
               <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded">
                 Weekend
@@ -98,7 +119,7 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
                 🌴 {report.holiday.name}
               </span>
             )}
-          </div>
+          </label>
 
           <button
             type="button"
@@ -110,7 +131,7 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
         </div>
 
         {/* Copy for Slack Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={handleCopySlack}
@@ -126,6 +147,23 @@ export function AdminDailyBoard({ initialDate }: AdminDailyBoardProps) {
               <>
                 <Copy className="w-4 h-4" />
                 <span>Copy for Slack / Teams</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyWeeklySlack}
+            className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+          >
+            {copiedWeeklySlack ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-200" />
+                <span>Weekly Summary Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" />
+                <span>Copy Week for Slack / Teams</span>
               </>
             )}
           </button>

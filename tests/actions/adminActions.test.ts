@@ -5,6 +5,7 @@ import {
   verifyAdminPasscode,
   adminLogout,
   getAdminDailyStandup,
+  getAdminWeeklyStandup,
   getAdminAnalytics,
   unlockSubmission,
   addMember,
@@ -82,6 +83,49 @@ describe('adminActions', () => {
     expect(report.totalTeamHours).toBe(4.0);
     expect(report.submittedMembersCount).toBe(1);
     expect(report.totalMembersCount).toBe(mockStore.members.length);
+  });
+
+  it('aggregates one report per working day for a weekly export', async () => {
+    await verifyAdminPasscode('1234');
+
+    mockStore.tasks.push(
+      {
+        id: 't-mon',
+        member_id: 'm-1',
+        date: '2026-08-17',
+        title: 'Plan sprint work',
+        status: 'done',
+        hours_spent: 2,
+        is_ad_hoc: false,
+        order_index: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 't-tue',
+        member_id: 'm-2',
+        date: '2026-08-18',
+        title: 'Review pull requests',
+        status: 'done',
+        hours_spent: 3,
+        is_ad_hoc: false,
+        order_index: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    );
+
+    const reports = await getAdminWeeklyStandup('2026-08-17', '2026-08-23');
+
+    expect(reports.map((report) => report.date)).toEqual([
+      '2026-08-17',
+      '2026-08-18',
+      '2026-08-19',
+      '2026-08-20',
+      '2026-08-21',
+    ]);
+    expect(reports[0].totalTeamHours).toBe(2);
+    expect(reports[1].totalTeamHours).toBe(3);
   });
 
   it('allows admin to unlock a member locked submission for corrections', async () => {

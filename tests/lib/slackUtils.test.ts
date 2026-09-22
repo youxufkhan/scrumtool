@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatSlackStandup } from '@/lib/slackUtils';
-import { StandupMemberSummary } from '@/types/database';
+import { formatSlackStandup, formatSlackWeeklyStandup } from '@/lib/slackUtils';
+import { DailyStandupReport, StandupMemberSummary } from '@/types/database';
 
 describe('slackUtils', () => {
   it('formats daily standup report for Slack with total hours and blocker emojis', () => {
@@ -63,5 +63,24 @@ describe('slackUtils', () => {
     expect(markdown).toContain('*Alex Rivera* (6.0 hrs)');
     expect(markdown).toContain('✅ [Done] Implement daily logger (4.5 hrs) [Core App]');
     expect(markdown).toContain('⚠️ [Blocked] [Ad-hoc] Deploy test branch (1.5 hrs) [Infrastructure] — *Blocker: Waiting on cloud credentials*');
+  });
+
+  it('formats multiple daily reports into a weekly Slack summary', () => {
+    const report: DailyStandupReport = {
+      date: '2026-08-24',
+      isWeekend: false,
+      holiday: null,
+      members: [],
+      totalTeamHours: 0,
+      totalMembersCount: 1,
+      submittedMembersCount: 0,
+      blockedTasksCount: 0,
+    };
+
+    const markdown = formatSlackWeeklyStandup([report], '2026-08-24', '2026-08-28');
+
+    expect(markdown).toContain('Weekly Standup Summary — 2026-08-24 to 2026-08-28');
+    expect(markdown).toContain('Daily Standup Summary — 2026-08-24');
+    expect(markdown).toContain('No standup entries submitted for this date.');
   });
 });

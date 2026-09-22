@@ -1,4 +1,4 @@
-import { StandupMemberSummary } from '@/types/database';
+import { DailyStandupReport, StandupMemberSummary } from '@/types/database';
 
 /**
  * Formats daily standup submissions into a clean Slack / MS Teams markdown summary.
@@ -46,4 +46,17 @@ export function formatSlackStandup(date: string, membersData: StandupMemberSumma
   });
 
   return `${header}\n${memberBlocks.join('\n\n')}`;
+}
+
+/**
+ * Formats multiple daily standup reports into one Slack / MS Teams summary.
+ */
+export function formatSlackWeeklyStandup(reports: DailyStandupReport[], startDate: string, endDate: string): string {
+  const header = `📅 *Weekly Standup Summary — ${startDate} to ${endDate}*\n`;
+
+  if (!reports || reports.length === 0) {
+    return `${header}\n_No standup entries submitted for this week._`;
+  }
+
+  return `${header}\n${reports.map((report) => formatSlackStandup(report.date, report.members)).join('\n\n')}`;
 }

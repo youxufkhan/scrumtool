@@ -218,6 +218,25 @@ export async function getAdminDailyStandup(date: string): Promise<DailyStandupRe
 }
 
 /**
+ * Aggregates standup reports for each working day in an inclusive date range.
+ * Used by the admin weekly Slack / Teams export.
+ */
+export async function getAdminWeeklyStandup(startDate: string, endDate: string): Promise<DailyStandupReport[]> {
+  if (!(await requireAdminAuth())) {
+    throw new Error('UNAUTHORIZED: Admin authentication required.');
+  }
+
+  if (!startDate || !endDate || startDate > endDate) {
+    throw new Error('INVALID_DATE_RANGE: Start date must be before or equal to end date.');
+  }
+
+  const holidays = await getHolidaysList();
+  const workingDays = getPastWorkingDays(startDate, endDate, holidays.map((holiday) => holiday.date));
+
+  return Promise.all(workingDays.map((date) => getAdminDailyStandup(date)));
+}
+
+/**
  * Admin action: Unlocks a submission for a member on a given date to allow corrections.
  */
 export async function unlockSubmission(memberId: string, date: string): Promise<ActionResult> {
