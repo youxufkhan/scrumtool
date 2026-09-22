@@ -26,10 +26,11 @@ import {
   adminMarkMemberLeaveRange,
   adminGetMemberLeaves,
   adminCancelMemberLeave,
+  exportDatabaseBackup,
 } from '@/app/actions/adminActions';
 
 export function HolidayAndTeamManager() {
-  const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects'>('holidays');
+  const [activeTab, setActiveTab] = useState<'holidays' | 'leaves' | 'members' | 'projects' | 'database'>('holidays');
 
   // Lists
   const [members, setMembers] = useState<Member[]>([]);
@@ -219,6 +220,29 @@ export function HolidayAndTeamManager() {
     }
   };
 
+  const handleDownloadBackup = async () => {
+    try {
+      const res = await exportDatabaseBackup();
+      if (res.success && res.data) {
+        const json = JSON.stringify(res.data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scrumtool_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Backup downloaded successfully!');
+      } else {
+        alert('Backup failed: ' + (res.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Backup error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Sub Tabs */}
@@ -227,7 +251,9 @@ export function HolidayAndTeamManager() {
           type="button"
           onClick={() => setActiveTab('holidays')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'holidays' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            activeTab === 'holidays'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Palmtree className="w-3.5 h-3.5" />
@@ -238,7 +264,9 @@ export function HolidayAndTeamManager() {
           type="button"
           onClick={() => setActiveTab('leaves')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'leaves' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            activeTab === 'leaves'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
@@ -249,7 +277,9 @@ export function HolidayAndTeamManager() {
           type="button"
           onClick={() => setActiveTab('members')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'members' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            activeTab === 'members'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -260,11 +290,26 @@ export function HolidayAndTeamManager() {
           type="button"
           onClick={() => setActiveTab('projects')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'projects' ? 'bg-indigo-600 dark:bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            activeTab === 'projects'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Briefcase className="w-3.5 h-3.5" />
           <span>Projects</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('database')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            activeTab === 'database'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Database</span>
         </button>
       </div>
 
@@ -654,6 +699,22 @@ export function HolidayAndTeamManager() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'database' && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Database Backup</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Export all data from the database into a secure JSON file. You can use this file for disaster recovery or migrations.
+          </p>
+          <button
+            type="button"
+            onClick={handleDownloadBackup}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" /> Download Full Backup
+          </button>
         </div>
       )}
     </div>

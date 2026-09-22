@@ -11,6 +11,7 @@ describe('slackUtils', () => {
           name: 'Alex Rivera',
           role: 'Frontend Lead',
           avatar_color: '#3B82F6',
+          is_admin: false,
           is_active: true,
           joined_at: '2026-01-01',
           created_at: '',

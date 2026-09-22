@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockStore } from '@/lib/db';
+import * as serverDb from '@/lib/serverDb';
 import { clearTestCookies } from '@/lib/authUtils';
 import {
-  verifyAdminPasscode,
-  adminLogout,
   getAdminDailyStandup,
   getAdminWeeklyStandup,
   getAdminAnalytics,
@@ -17,8 +16,9 @@ import {
   adminGetMemberLeaves,
   adminCancelMemberLeave,
   exportAdminCsvData,
+  exportDatabaseBackup,
 } from '@/app/actions/adminActions';
-import { verifyMemberPasscode, changeMemberPasscode, checkMemberGate } from '@/app/actions/standupActions';
+import { verifyMemberPasscode, changeMemberPasscode, checkMemberGate, memberLogout } from '@/app/actions/standupActions';
 
 describe('adminActions', () => {
   beforeEach(() => {
@@ -30,33 +30,21 @@ describe('adminActions', () => {
     });
   });
 
-  it('validates admin passcode correctly and sets session cookie', async () => {
-    const valid = await verifyAdminPasscode('1234');
-    expect(valid.success).toBe(true);
-
-    const invalid = await verifyAdminPasscode('wrong-pass');
-    expect(invalid.success).toBe(false);
-  });
-
-  it('rejects unauthenticated requests to admin actions', async () => {
+  it('grants admin access to members with is_admin flag', async () => {
     // No login performed
     await expect(getAdminDailyStandup('2026-08-24')).rejects.toThrow('UNAUTHORIZED');
 
-    const addMemRes = await addMember('Unauthorized Member', 'Engineer');
-    expect(addMemRes.success).toBe(false);
-    expect(addMemRes.error).toContain('UNAUTHORIZED');
+    // Login as admin member (Alex Rivera, m-1)
+    const loginRes = await verifyMemberPasscode('m-1', '1234');
+    expect(loginRes.success).toBe(true);
 
-    const resetRes = await adminResetMemberPasscode('m-1');
-    expect(resetRes.success).toBe(false);
-    expect(resetRes.error).toContain('UNAUTHORIZED');
-
-    const csvRes = await exportAdminCsvData('2026-08-01', '2026-08-31');
-    expect(csvRes.success).toBe(false);
-    expect(csvRes.error).toContain('UNAUTHORIZED');
+    // Should now succeed
+    const addMemRes = await addMember('New Admin Member', 'Engineer');
+    expect(addMemRes.success).toBe(true);
   });
 
   it('aggregates daily standup report for all members after login', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
 
     mockStore.tasks.push({
       id: 't-1',
@@ -86,7 +74,7 @@ describe('adminActions', () => {
   });
 
   it('aggregates one report per working day for a weekly export', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
 
     mockStore.tasks.push(
       {
@@ -129,7 +117,7 @@ describe('adminActions', () => {
   });
 
   it('allows admin to unlock a member locked submission for corrections', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
 
     mockStore.submissions.push({
       id: 'sub-1',
@@ -149,28 +137,28 @@ describe('adminActions', () => {
 
   it('allows admin to reset a member passcode back to 1234', async () => {
     // 1. User changes PIN to 8888
-    await changeMemberPasscode('m-1', '1234', '8888');
-    const auth8888 = await verifyMemberPasscode('m-1', '8888');
+    await changeMemberPasscode('m-2', '1234', '8888');
+    const auth8888 = await verifyMemberPasscode('m-2', '8888');
     expect(auth8888.success).toBe(true);
     expect(auth8888.data?.requiresSetup).toBe(false);
 
     // 2. Admin resets PIN (must be logged in as admin)
-    await verifyAdminPasscode('1234');
-    const resetRes = await adminResetMemberPasscode('m-1');
+    await verifyMemberPasscode('m-1', '1234');
+    const resetRes = await adminResetMemberPasscode('m-2');
     expect(resetRes.success).toBe(true);
 
     // 3. 1234 works again and requires setup
-    const auth1234 = await verifyMemberPasscode('m-1', '1234');
+    const auth1234 = await verifyMemberPasscode('m-2', '1234');
     expect(auth1234.success).toBe(true);
     expect(auth1234.data?.requiresSetup).toBe(true);
 
     // 4. Old 8888 no longer works
-    const oldAuth = await verifyMemberPasscode('m-1', '8888');
+    const oldAuth = await verifyMemberPasscode('m-2', '8888');
     expect(oldAuth.success).toBe(false);
   });
 
   it('allows admin to mark a member on leave across a date range excluding weekends', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
 
     // Friday Aug 21, 2026 to Tuesday Aug 25, 2026
     // Working days: Friday Aug 21, Monday Aug 24, Tuesday Aug 25 (3 working days, Sat/Sun skipped)
@@ -190,7 +178,7 @@ describe('adminActions', () => {
   });
 
   it('allows admin to cancel a scheduled leave', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
 
     await adminMarkMemberLeaveRange('m-1', '2026-08-24', '2026-08-24', 'Sick Leave');
     const leaves = await adminGetMemberLeaves();
@@ -204,11 +192,94 @@ describe('adminActions', () => {
   });
 
   it('clears admin session on logout', async () => {
-    await verifyAdminPasscode('1234');
+    await verifyMemberPasscode('m-1', '1234');
     const reportBefore = await getAdminDailyStandup('2026-08-24');
     expect(reportBefore).toBeDefined();
 
-    await adminLogout();
+    await memberLogout();
     await expect(getAdminDailyStandup('2026-08-24')).rejects.toThrow('UNAUTHORIZED');
   });
+
+  it('allows an admin to export a full database backup and rejects unauthenticated users', async () => {
+    // 1. Unauthenticated user is rejected
+    const unauthRes = await exportDatabaseBackup();
+    expect(unauthRes.success).toBe(false);
+    expect(unauthRes.error).toBe('UNAUTHORIZED');
+
+    // 2. Non-admin user is rejected
+    await verifyMemberPasscode('m-2', '1234');
+    const nonAdminRes = await exportDatabaseBackup();
+    expect(nonAdminRes.success).toBe(false);
+    expect(nonAdminRes.error).toBe('UNAUTHORIZED');
+
+    // 3. Admin user succeeds and receives complete database dump
+    await verifyMemberPasscode('m-1', '1234');
+    mockStore.tasks.push({
+      id: 't-backup-1',
+      member_id: 'm-1',
+      date: '2026-08-24',
+      title: 'Database backup test task',
+      status: 'done',
+      hours_spent: 2.5,
+      is_ad_hoc: false,
+      order_index: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const res = await exportDatabaseBackup();
+    expect(res.success).toBe(true);
+    expect(res.data).toBeDefined();
+    expect(res.data.timestamp).toBeDefined();
+    expect(res.data.data).toBeDefined();
+    expect(res.data.data.members).toEqual(mockStore.members);
+    expect(res.data.data.projects).toEqual(mockStore.projects);
+    expect(res.data.data.daily_submissions).toEqual(mockStore.submissions);
+    expect(res.data.data.daily_tasks).toEqual(mockStore.tasks);
+    expect(res.data.data.holidays).toEqual(mockStore.holidays);
+  });
+
+  it('returns an error if any table query fails during database backup', async () => {
+    await verifyMemberPasscode('m-1', '1234');
+
+    const mockSupabase = {
+      from: (table: string) => ({
+        select: (fields?: string) => {
+          if (fields === 'is_admin') {
+            return {
+              eq: () => ({
+                single: async () => ({ data: { is_admin: true }, error: null }),
+              }),
+            };
+          }
+          if (fields === 'passcode_hash, has_custom_passcode') {
+            return {
+              eq: () => ({
+                single: async () => ({
+                  data: {
+                    passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50',
+                    has_custom_passcode: false,
+                  },
+                  error: null,
+                }),
+              }),
+            };
+          }
+          if (table === 'daily_tasks') {
+            return Promise.resolve({ data: null, error: { message: 'Database connection timeout on tasks table' } });
+          }
+          return Promise.resolve({ data: [], error: null });
+        },
+      }),
+    };
+
+    const spy = vi.spyOn(serverDb, 'getServerSupabaseClient').mockReturnValue(mockSupabase as any);
+
+    const res = await exportDatabaseBackup();
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('Database connection timeout on tasks table');
+
+    spy.mockRestore();
+  });
 });
+

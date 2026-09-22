@@ -1,6 +1,5 @@
 'use server';
 
-import crypto from 'crypto';
 import { mockStore } from '@/lib/db';
 import { getServerSupabaseClient } from '@/lib/serverDb';
 import {
@@ -14,64 +13,27 @@ import {
   DailySubmission,
 } from '@/types/database';
 import { isWeekend, getPastWorkingDays } from '@/lib/dateUtils';
-import { ActionResult, getHolidaysList } from './standupActions';
-import { hashPasscode, setAdminCookie, clearAdminCookie, getAdminAuthFromCookies } from '@/lib/authUtils';
-
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '1234';
+import { ActionResult, getHolidaysList, verifyMemberSession } from './standupActions';
+import { hashPasscode, getMemberAuthFromCookies } from '@/lib/authUtils';
 
 /**
  * Checks if the incoming request has valid admin authorization
  */
 export async function requireAdminAuth(): Promise<boolean> {
-  const token = await getAdminAuthFromCookies();
-  if (!token) return false;
+  const auth = await getMemberAuthFromCookies();
+  if (!auth.memberId || !auth.token) return false;
 
-  const expectedToken = crypto
-    .createHash('sha256')
-    .update(`${ADMIN_PASSCODE}-${new Date().toDateString()}`)
-    .digest('hex');
+  const isValidSession = await verifyMemberSession(auth.memberId, auth.token);
+  if (!isValidSession) return false;
 
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(expectedToken);
-
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
-}
-
-/**
- * Constant-time passcode verification to protect against timing attacks.
- * Sets a secure HTTP-only cookie on success.
- */
-export async function verifyAdminPasscode(passcode: string): Promise<ActionResult<{ token: string }>> {
-  if (!passcode || typeof passcode !== 'string') {
-    return { success: false, error: 'Invalid passcode format.' };
+  const db = getServerSupabaseClient();
+  if (db) {
+    const { data } = await db.from('members').select('is_admin').eq('id', auth.memberId).single();
+    return data?.is_admin === true;
+  } else {
+    const member = mockStore.members.find((m) => m.id === auth.memberId);
+    return member?.is_admin === true;
   }
-
-  const expectedBuffer = Buffer.from(ADMIN_PASSCODE);
-  const inputBuffer = Buffer.from(passcode);
-
-  if (expectedBuffer.length !== inputBuffer.length) {
-    return { success: false, error: 'Incorrect admin passcode.' };
-  }
-
-  const isMatch = crypto.timingSafeEqual(expectedBuffer, inputBuffer);
-  if (!isMatch) {
-    return { success: false, error: 'Incorrect admin passcode.' };
-  }
-
-  // Generate simple token for client state & cookie
-  const token = crypto.createHash('sha256').update(`${ADMIN_PASSCODE}-${new Date().toDateString()}`).digest('hex');
-  await setAdminCookie(token);
-
-  return { success: true, data: { token } };
-}
-
-/**
- * Admin logout action clearing session cookie
- */
-export async function adminLogout(): Promise<ActionResult> {
-  await clearAdminCookie();
-  return { success: true };
 }
 
 /**
@@ -424,6 +386,7 @@ export async function addMember(name: string, role: string, avatarColor?: string
     name: name.trim(),
     role: role.trim() || 'Engineer',
     avatar_color: color,
+    is_admin: false,
     is_active: true,
     joined_at: new Date().toISOString().slice(0, 10),
     created_at: new Date().toISOString(),
@@ -720,3 +683,61 @@ export async function exportAdminCsvData(
 
   return { success: true, data: allTasks };
 }
+
+/**
+ * Admin Action: Export complete database backup
+ */
+export async function exportDatabaseBackup(): Promise<ActionResult<any>> {
+  if (!(await requireAdminAuth())) {
+    return { success: false, error: 'UNAUTHORIZED' };
+  }
+
+  const db = getServerSupabaseClient();
+  if (db) {
+    try {
+      const [members, projects, submissions, tasks, holidays] = await Promise.all([
+        db.from('members').select('*'),
+        db.from('projects').select('*'),
+        db.from('daily_submissions').select('*'),
+        db.from('daily_tasks').select('*'),
+        db.from('holidays').select('*'),
+      ]);
+
+      if (members.error || projects.error || submissions.error || tasks.error || holidays.error) {
+        const firstError = members.error || projects.error || submissions.error || tasks.error || holidays.error;
+        return { success: false, error: firstError?.message || 'Failed to export table data' };
+      }
+
+      const backup = {
+        timestamp: new Date().toISOString(),
+        data: {
+          members: members.data || [],
+          projects: projects.data || [],
+          daily_submissions: submissions.data || [],
+          daily_tasks: tasks.data || [],
+          holidays: holidays.data || [],
+        },
+      };
+
+      return { success: true, data: backup };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  } else {
+    // mockStore export for testing
+    return {
+      success: true,
+      data: {
+        timestamp: new Date().toISOString(),
+        data: {
+          members: mockStore.members,
+          projects: mockStore.projects,
+          daily_submissions: mockStore.submissions,
+          daily_tasks: mockStore.tasks,
+          holidays: mockStore.holidays,
+        },
+      },
+    };
+  }
+}
+

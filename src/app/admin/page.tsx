@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Shield, LayoutDashboard, BarChart2, Settings, ArrowLeft, LogOut } from 'lucide-react';
-import { AdminAuthModal } from '@/components/admin/AdminAuthModal';
+import { Shield, LayoutDashboard, BarChart2, Settings, ArrowLeft } from 'lucide-react';
 import { AdminDailyBoard } from '@/components/admin/AdminDailyBoard';
 import { AdminAnalyticsView } from '@/components/admin/AdminAnalyticsView';
 import { HolidayAndTeamManager } from '@/components/admin/HolidayAndTeamManager';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getLocalTodayIso } from '@/lib/dateUtils';
 import { checkInitialAdminAuth } from '@/app/actions/authActions';
-import { adminLogout } from '@/app/actions/adminActions';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -28,11 +26,6 @@ export default function AdminPage() {
       });
   }, []);
 
-  const handleLogout = async () => {
-    await adminLogout();
-    setIsAuthenticated(false);
-  };
-
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
@@ -42,7 +35,24 @@ export default function AdminPage() {
   }
 
   if (!isAuthenticated) {
-    return <AdminAuthModal onAuthenticated={() => setIsAuthenticated(true)} />;
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-4 p-4 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center mb-1">
+          <Shield className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Access Denied</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+          You must be an administrator to view this page.
+        </p>
+        <Link
+          href="/"
+          className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors shadow-xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Return to Standup</span>
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -70,15 +80,6 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-
             <ThemeToggle />
           </div>
         </div>

@@ -40,3 +40,7 @@ graphify-out/cache/
 graphify-out/cost.json
 graphify-out/.graphify_*.json
 !graphify-out/.graphify_labels.json
+
+# superpowers visual companion
+.superpowers/
+
