@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Member, Project, DailySubmission, DailyTask, Holiday } from '@/types/database';
+import { Member, Project, DailySubmission, DailyTask, Holiday, MemberRoadmap } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -30,31 +30,42 @@ export function getSupabaseClient(): SupabaseClient | null {
   return supabaseInstance;
 }
 
-// In-Memory Mock Store for isolated unit tests or zero-config local demo
-export class InMemoryStore {
-  members: Member[] = [
+const initialStore: { members: Member[]; projects: Project[] } = {
+  members: [
     { id: 'm-1', name: 'Alex Rivera', role: 'Frontend Lead', avatar_color: '#3B82F6', is_admin: true, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
     { id: 'm-2', name: 'Sam Chen', role: 'Backend Engineer', avatar_color: '#10B981', is_admin: false, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
     { id: 'm-3', name: 'Jordan Taylor', role: 'Fullstack Dev', avatar_color: '#8B5CF6', is_admin: false, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
     { id: 'm-4', name: 'Morgan Riley', role: 'QA Engineer', avatar_color: '#F59E0B', is_admin: false, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
-  ];
-
-  projects: Project[] = [
+  ],
+  projects: [
     { id: 'p-1', name: 'Core App', color: '#3B82F6', is_active: true, created_at: new Date().toISOString() },
     { id: 'p-2', name: 'Mobile MVP', color: '#10B981', is_active: true, created_at: new Date().toISOString() },
     { id: 'p-3', name: 'Infrastructure', color: '#8B5CF6', is_active: true, created_at: new Date().toISOString() },
     { id: 'p-4', name: 'Bug Fixes', color: '#EF4444', is_active: true, created_at: new Date().toISOString() },
-  ];
+  ],
+};
 
+// In-Memory Mock Store for isolated unit tests or zero-config local demo
+export class InMemoryStore {
+  members: Member[] = initialStore.members.map((m) => ({ ...m }));
+  projects: Project[] = initialStore.projects.map((p) => ({ ...p }));
   submissions: DailySubmission[] = [];
   tasks: DailyTask[] = [];
   holidays: Holiday[] = [];
+  memberRoadmaps: MemberRoadmap[] = [];
 
   clear() {
     this.submissions = [];
     this.tasks = [];
     this.holidays = [];
+    this.memberRoadmaps = [];
   }
 }
 
 export const mockStore = new InMemoryStore();
+
+export function resetMockStore(): void {
+  mockStore.clear();
+  mockStore.members = initialStore.members.map((m) => ({ ...m }));
+  mockStore.projects = initialStore.projects.map((p) => ({ ...p }));
+}

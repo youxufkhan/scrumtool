@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14_(App_Router)-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL_(RLS)-emerald?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS_3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-31_Tests_Passing-6E9F18?style=for-the-badge&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-41_Tests_Passing-6E9F18?style=for-the-badge&logo=vitest)](https://vitest.dev/)
 
 ---
 
@@ -16,14 +16,17 @@
 - 🔐 **Secure 4-Digit PIN Authentication:** Quick and friction-free login with custom PIN setup on first access (default: `1234`). Passcodes are securely hashed using salted SHA-256 and sessions are managed via HTTP-only cookies.
 - 🌅 **Morning Standup (< 30s):** Rapid keyboard-first task planning (`Enter` to add consecutive tasks) + 1-click **"Copy Unfinished Tasks from Yesterday"**.
 - 🌆 **Evening Standup (< 1m):** Decimal hour entry (`0.5`, `1.25`, `0`), status toggles (`Done`, `In Progress`, `Blocked`), and **"Submit & Lock Day"**.
+- 🎯 **30-60-90 Day Career Roadmaps:** Dedicated "My Roadmap" dashboard view displaying the member's active growth goals, admin coaching feedback, and performance evaluations across Technical, Soft, and Learning skills.
 - 🛡️ **Missing Hours Compliance Gate:** Automatically scans past working days (excluding weekends & holidays) and blocks current standups until unsubmitted hours are logged or marked as leave.
 - ⚡ **Zero-Flicker Optimistic UI:** Tasks are saved seamlessly in the background without disruptive full-page reloads or spinner unmounts.
 - 📅 **Smart Date Navigation:** Future date lockout prevents recording standups ahead of time, while previous working days remain accessible for retroactive logging.
 
 ### 🛠️ Admin Console (`/admin`)
 - 📋 **Daily Team Board:** Real-time summary across all members with a 1-click **"Copy for Slack / Teams"** markdown generator.
+- 📈 **Roadmap & Growth Evaluations:** Create and manage versioned 30-60-90 day performance roadmaps with 1–5 skill ratings, coaching feedback notes, and targeted milestones per engineer.
 - 📊 **Analytics & Timesheets:** Interactive charts for total team hours, project allocation distribution, and planned vs. ad-hoc trends.
 - 📥 **Secure CSV Export:** Server-generated timesheet CSV export with formula injection sanitization.
+- 💾 **Database Backups:** 1-click administrative JSON backup export of all system tables with full query verification.
 - 🌴 **Leave & PTO Management:** Schedule member leaves across date ranges with automatic weekend and holiday exclusion.
 - 🔑 **PIN Management & Submission Unlocks:** 1-click passcode reset for members and submission unlock overrides for corrections.
 

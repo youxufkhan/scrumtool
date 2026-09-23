@@ -10,7 +10,8 @@ import { Member, Project, DailyTask, DailySubmission, Holiday } from '@/types/da
 import { getLocalTodayIso } from '@/lib/dateUtils';
 import { getMembers, getProjects, checkMemberGate, getDailyTasks, memberLogout } from '@/app/actions/standupActions';
 import { checkInitialMemberAuth } from '@/app/actions/authActions';
-import { Palmtree, Sun } from 'lucide-react';
+import { MemberRoadmapTab } from '@/components/MemberRoadmapTab';
+import { Palmtree, Sun, Calendar, Compass } from 'lucide-react';
 
 export default function MemberHomePage() {
   const [todayDate] = useState<string>(getLocalTodayIso());
@@ -31,6 +32,7 @@ export default function MemberHomePage() {
   const [holiday, setHoliday] = useState<Holiday | null>(null);
   const [isWeekend, setIsWeekend] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'standup' | 'roadmap'>('standup');
 
   // 1. Initial Load: Fetch members, projects and check cookie session
   useEffect(() => {
@@ -113,12 +115,14 @@ export default function MemberHomePage() {
 
   const handleSelectMember = (member: Member) => {
     setCurrentMember(member);
+    setActiveTab('standup');
     setShowMemberPicker(false);
   };
 
   const handleSwitchMember = async () => {
     await memberLogout();
     setCurrentMember(null);
+    setActiveTab('standup');
     setShowMemberPicker(true);
   };
 
@@ -159,62 +163,96 @@ export default function MemberHomePage() {
               Select Your Name to Begin
             </button>
           </div>
-        ) : isBlocked && currentDate === todayDate ? (
-          /* Missing Hours Gate Blocker */
-          <MissingHoursGateCard
-            memberId={currentMember.id}
-            memberName={currentMember.name}
-            pendingDates={pendingDates}
-            onResolved={() => {
-              setIsBlocked(false);
-              loadGate();
-              loadDayData();
-            }}
-          />
         ) : (
-          /* Normal Standup Flow */
-          <div className="space-y-4">
-            {/* Holiday or Weekend Banner */}
-            {holiday && (
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center gap-3">
-                <Palmtree className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="text-xs font-medium">
-                  <strong>🌴 Official Holiday: {holiday.name}</strong> — Standup is not required today, but you can still record tasks.
-                </div>
-              </div>
-            )}
+          <div className="space-y-6">
+            {/* View Tab Navigation */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('standup')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                  activeTab === 'standup'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Daily Standup</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('roadmap')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                  activeTab === 'roadmap'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Compass className="w-4 h-4" />
+                <span>My Roadmap</span>
+              </button>
+            </div>
 
-            {isWeekend && !holiday && (
-              <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-indigo-900 dark:text-indigo-200 flex items-center gap-3">
-                <Sun className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <div className="text-xs font-medium">
-                  <strong>🎉 Weekend</strong> — Standup is not mandatory, but feel free to record any weekend tasks.
-                </div>
-              </div>
-            )}
-
-            {/* Standup Card: Locked vs. Logger */}
-            {isLocked ? (
-              <LockedStandupCard
-                date={currentDate}
-                tasks={tasks}
-                submission={submission}
-                memberName={currentMember.name}
-              />
-            ) : (
-              <DailyStandupLogger
-                key={`${currentMember.id}-${currentDate}`}
+            {activeTab === 'roadmap' ? (
+              <MemberRoadmapTab memberId={currentMember.id} />
+            ) : isBlocked && currentDate === todayDate ? (
+              /* Missing Hours Gate Blocker */
+              <MissingHoursGateCard
                 memberId={currentMember.id}
                 memberName={currentMember.name}
-                date={currentDate}
-                initialTasks={tasks}
-                projects={projects}
-                onSaved={() => loadDayData(true)}
-                onLocked={() => {
-                  loadDayData(false);
+                pendingDates={pendingDates}
+                onResolved={() => {
+                  setIsBlocked(false);
                   loadGate();
+                  loadDayData();
                 }}
               />
+            ) : (
+              /* Normal Standup Flow */
+              <div className="space-y-4">
+                {/* Holiday or Weekend Banner */}
+                {holiday && (
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center gap-3">
+                    <Palmtree className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <div className="text-xs font-medium">
+                      <strong>🌴 Official Holiday: {holiday.name}</strong> — Standup is not required today, but you can still record tasks.
+                    </div>
+                  </div>
+                )}
+
+                {isWeekend && !holiday && (
+                  <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-indigo-900 dark:text-indigo-200 flex items-center gap-3">
+                    <Sun className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <div className="text-xs font-medium">
+                      <strong>🎉 Weekend</strong> — Standup is not mandatory, but feel free to record any weekend tasks.
+                    </div>
+                  </div>
+                )}
+
+                {/* Standup Card: Locked vs. Logger */}
+                {isLocked ? (
+                  <LockedStandupCard
+                    date={currentDate}
+                    tasks={tasks}
+                    submission={submission}
+                    memberName={currentMember.name}
+                  />
+                ) : (
+                  <DailyStandupLogger
+                    key={`${currentMember.id}-${currentDate}`}
+                    memberId={currentMember.id}
+                    memberName={currentMember.name}
+                    date={currentDate}
+                    initialTasks={tasks}
+                    projects={projects}
+                    onSaved={() => loadDayData(true)}
+                    onLocked={() => {
+                      loadDayData(false);
+                      loadGate();
+                    }}
+                  />
+                )}
+              </div>
             )}
           </div>
         )}
