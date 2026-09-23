@@ -107,7 +107,6 @@ CREATE TABLE IF NOT EXISTS member_roadmaps (
     goals_30_days TEXT,
     goals_60_days TEXT,
     goals_90_days TEXT,
-    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

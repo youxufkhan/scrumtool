@@ -65,7 +65,6 @@ export interface MemberRoadmap {
   goals_30_days: string | null;
   goals_60_days: string | null;
   goals_90_days: string | null;
-  is_active: boolean;
   created_at: string;
 }
 

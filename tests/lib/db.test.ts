@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mockStore, resetMockStore, createMockStore, isSupabaseConfigured, getSupabaseClient } from '@/lib/db';
+import { mockStore, resetMockStore, isSupabaseConfigured, getSupabaseClient } from '@/lib/db';
 
 describe('Database Client & Mock Store', () => {
   it('initializes mock store with default members and projects', () => {
@@ -33,7 +33,6 @@ describe('Database Client & Mock Store', () => {
       goals_30_days: 'Goal 30',
       goals_60_days: 'Goal 60',
       goals_90_days: 'Goal 90',
-      is_active: true,
       created_at: new Date().toISOString(),
     });
 
@@ -66,7 +65,6 @@ describe('Database Client & Mock Store', () => {
       goals_30_days: null,
       goals_60_days: null,
       goals_90_days: null,
-      is_active: true,
       created_at: new Date().toISOString(),
     });
 
@@ -75,9 +73,4 @@ describe('Database Client & Mock Store', () => {
     expect(mockStore.memberRoadmaps.length).toBe(0);
   });
 
-  it('createMockStore returns a fresh InMemoryStore instance', () => {
-    const store = createMockStore();
-    expect(store.members.length).toBe(4);
-    expect(store.memberRoadmaps).toEqual([]);
-  });
 });

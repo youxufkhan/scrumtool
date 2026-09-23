@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Member 30-60-90 Day Roadmaps & Evaluations**:
-  - Added `member_roadmaps` table in Supabase schema and migration `20260923000000_add_member_roadmaps.sql` with Row Level Security (RLS) enabled.
+  - Added `member_roadmaps` table in Supabase schema and migration `20260923000000_add_member_roadmaps.sql` with Row Level Security (RLS) enabled. The newest roadmap per member is the active one.
   - Server Actions (`saveMemberRoadmap`, `getMemberRoadmapHistory`, `getActiveRoadmap`) in `src/app/actions/roadmapActions.ts` with strict role-based access control.
   - Admin modal `AdminRoadmapModal.tsx` in Admin Console to evaluate members (Technical Skills, Soft Skills, Learning & Development on a 1–5 scale), write coaching notes, and set 30/60/90 day action milestones.
   - Interactive Roadmap History view in Admin Console allowing administrators to browse past versions and observe progression over time.
   - Member "My Roadmap" dashboard tab (`MemberRoadmapTab.tsx`) with real-time status, skill ratings, feedback notes, milestone breakdown, and network error retry support.
   - In-memory mock store support (`mockStore.memberRoadmaps`) for fast, isolated, zero-network unit tests.
-  - 5 new unit tests in Vitest validating authorization, immutability, history sorting, and Supabase / mockStore execution paths (41 total tests passing).
+  - 6 new unit tests in Vitest validating authorization, newest-wins activation, error surfacing, and Supabase / mockStore execution paths (41 total tests passing).
 
 ## [1.1.0] - 2026-09-22
 

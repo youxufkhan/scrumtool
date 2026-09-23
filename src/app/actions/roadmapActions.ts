@@ -8,11 +8,11 @@ import { mockStore } from '@/lib/db';
 import { MemberRoadmap } from '@/types/database';
 
 /**
- * Saves a new roadmap for a member. Old roadmaps for this member are deactivated.
+ * Saves a new roadmap for a member. The newest roadmap is the active one.
  * Restricted to administrators only.
  */
 export async function saveMemberRoadmap(
-  data: Omit<MemberRoadmap, 'id' | 'created_at' | 'is_active'>
+  data: Omit<MemberRoadmap, 'id' | 'created_at'>
 ): Promise<{ success: boolean; error?: string }> {
   if (!(await requireAdminAuth())) {
     return { success: false, error: 'Unauthorized: admin access required' };
@@ -20,27 +20,11 @@ export async function saveMemberRoadmap(
 
   const supabase = getServerSupabaseClient();
   if (!supabase) {
-    mockStore.memberRoadmaps.forEach((r) => {
-      if (r.member_id === data.member_id) r.is_active = false;
-    });
-
-    const newRoadmap: MemberRoadmap = {
-      ...data,
-      id: crypto.randomUUID(),
-      is_active: true,
-      created_at: new Date().toISOString(),
-    };
-    mockStore.memberRoadmaps.push(newRoadmap);
+    mockStore.memberRoadmaps.push({ ...data, id: crypto.randomUUID(), created_at: new Date().toISOString() });
     return { success: true };
   }
 
-  const { error: updateError } = await supabase
-    .from('member_roadmaps')
-    .update({ is_active: false })
-    .eq('member_id', data.member_id);
-  if (updateError) return { success: false, error: updateError.message };
-
-  const { error } = await supabase.from('member_roadmaps').insert([{ ...data, is_active: true }]);
+  const { error } = await supabase.from('member_roadmaps').insert([data]);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
@@ -56,38 +40,37 @@ export async function getMemberRoadmapHistory(memberId: string): Promise<MemberR
 
   const supabase = getServerSupabaseClient();
   if (!supabase) {
-    return mockStore.memberRoadmaps
-      .filter((r) => r.member_id === memberId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return mockStore.memberRoadmaps.filter((r) => r.member_id === memberId).reverse();
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('member_roadmaps')
     .select('*')
     .eq('member_id', memberId)
     .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
   return (data as MemberRoadmap[]) || [];
 }
 
 /**
- * Retrieves the currently active roadmap for a member.
+ * Retrieves the currently active (newest) roadmap for a member.
  * Accessible to administrators and the member themselves.
  */
 export async function getActiveRoadmap(memberId: string): Promise<MemberRoadmap | null> {
-  const isMember = await requireMemberAuth(memberId);
-  const isAdmin = isMember ? false : await requireAdminAuth();
-  if (!isMember && !isAdmin) return null;
+  if (!(await requireMemberAuth(memberId)) && !(await requireAdminAuth())) return null;
 
   const supabase = getServerSupabaseClient();
   if (!supabase) {
-    return mockStore.memberRoadmaps.find((r) => r.member_id === memberId && r.is_active) || null;
+    return mockStore.memberRoadmaps.filter((r) => r.member_id === memberId).at(-1) || null;
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('member_roadmaps')
     .select('*')
     .eq('member_id', memberId)
-    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as MemberRoadmap) || null;
 }

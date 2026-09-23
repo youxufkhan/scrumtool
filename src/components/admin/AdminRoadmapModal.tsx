@@ -1,22 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  X,
-  Target,
-  Sparkles,
-  Clock,
-  Check,
-  AlertCircle,
-  Award,
-  BookOpen,
-  Code,
-  Users,
-  History,
-  Calendar,
-  Layers,
-} from 'lucide-react';
+import { X, Target, Sparkles, Check, AlertCircle, BookOpen, Code, Users, History } from 'lucide-react';
 import { Member, MemberRoadmap } from '@/types/database';
+import { scoreLabels, milestones, RoadmapView } from '@/components/MemberRoadmapTab';
 import { saveMemberRoadmap, getMemberRoadmapHistory } from '@/app/actions/roadmapActions';
 
 interface AdminRoadmapModalProps {
@@ -24,12 +11,12 @@ interface AdminRoadmapModalProps {
   onClose: () => void;
 }
 
-const scoreLabels: Record<number, string> = {
-  1: 'Needs Improvement',
-  2: 'Developing',
-  3: 'Proficient',
-  4: 'Advanced',
-  5: 'Outstanding',
+const emptyGoals = { goals_30_days: '', goals_60_days: '', goals_90_days: '' };
+
+const goalPlaceholders: Record<keyof typeof emptyGoals, string> = {
+  goals_30_days: 'Milestones for Month 1 (e.g. Ramp up on new repository, resolve 5 assigned backlog tickets...)',
+  goals_60_days: 'Milestones for Month 2 (e.g. Lead end-to-end implementation of the analytics feature...)',
+  goals_90_days: 'Milestones for Month 3 (e.g. Propose and document architecture RFC, mentor junior team members...)',
 };
 
 export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
@@ -43,9 +30,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
   const [softScore, setSoftScore] = useState<number>(3);
   const [learningScore, setLearningScore] = useState<number>(3);
   const [adminNotes, setAdminNotes] = useState<string>('');
-  const [goals30, setGoals30] = useState<string>('');
-  const [goals60, setGoals60] = useState<string>('');
-  const [goals90, setGoals90] = useState<string>('');
+  const [goals, setGoals] = useState(emptyGoals);
 
   // Status feedback
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -59,6 +44,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
       setHistory(data);
     } catch (err) {
       console.error('Failed to load roadmap history', err);
+      setError('Failed to load roadmap history.');
     } finally {
       setLoadingHistory(false);
     }
@@ -98,9 +84,9 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
         soft_skills_score: softScore,
         learning_score: learningScore,
         admin_notes: adminNotes.trim() || null,
-        goals_30_days: goals30.trim() || null,
-        goals_60_days: goals60.trim() || null,
-        goals_90_days: goals90.trim() || null,
+        goals_30_days: goals.goals_30_days.trim() || null,
+        goals_60_days: goals.goals_60_days.trim() || null,
+        goals_90_days: goals.goals_90_days.trim() || null,
       });
 
       if (res.success) {
@@ -111,9 +97,7 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
         setSoftScore(3);
         setLearningScore(3);
         setAdminNotes('');
-        setGoals30('');
-        setGoals60('');
-        setGoals90('');
+        setGoals(emptyGoals);
         // Reload history and switch to history view
         await loadHistory();
         setActiveTab('history');
@@ -124,21 +108,6 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
       setError('An error occurred while saving the roadmap.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      return isNaN(d.getTime())
-        ? dateStr
-        : d.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          });
-    } catch {
-      return dateStr;
     }
   };
 
@@ -354,50 +323,21 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                   <span>30-60-90 Days Action Milestones</span>
                 </div>
 
-                {/* 30 Days */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-                    <Clock className="w-3 h-3 text-indigo-500" />
-                    <span>30 Days: Immediate Focus & Quick Wins</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Milestones for Month 1 (e.g. Ramp up on new repository, resolve 5 assigned backlog tickets...)"
-                    value={goals30}
-                    onChange={(e) => setGoals30(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
-                  />
-                </div>
-
-                {/* 60 Days */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-                    <Layers className="w-3 h-3 text-purple-500" />
-                    <span>60 Days: Expanding Ownership & Autonomy</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Milestones for Month 2 (e.g. Lead end-to-end implementation of the analytics feature...)"
-                    value={goals60}
-                    onChange={(e) => setGoals60(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
-                  />
-                </div>
-
-                {/* 90 Days */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-                    <Award className="w-3 h-3 text-emerald-500" />
-                    <span>90 Days: Strategic Impact & Growth Target</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Milestones for Month 3 (e.g. Propose and document architecture RFC, mentor junior team members...)"
-                    value={goals90}
-                    onChange={(e) => setGoals90(e.target.value)}
-                    className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
-                  />
-                </div>
+                {milestones.map(({ key, label, Icon, head }) => (
+                  <div key={key}>
+                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
+                      <Icon className={`w-3 h-3 ${head}`} />
+                      <span>{label}</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder={goalPlaceholders[key]}
+                      value={goals[key]}
+                      onChange={(e) => setGoals({ ...goals, [key]: e.target.value })}
+                      className="w-full text-xs font-medium px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-600 transition-colors resize-y leading-relaxed"
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* Submit Buttons */}
@@ -459,145 +399,8 @@ export function AdminRoadmapModal({ member, onClose }: AdminRoadmapModalProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {history.map((roadmap) => (
-                    <div
-                      key={roadmap.id}
-                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                        roadmap.is_active
-                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-sm'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
-                      }`}
-                    >
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                              {roadmap.title}
-                            </h3>
-                            {roadmap.is_active ? (
-                              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Active
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                Previous
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>Created {formatDate(roadmap.created_at)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Scores Breakdown */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3">
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60">
-                          <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                            <Code className="w-3 h-3 text-blue-500" />
-                            <span>Technical Skills</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                              {roadmap.tech_skills_score ?? '—'}/5
-                            </span>
-                            {roadmap.tech_skills_score && (
-                              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                ({scoreLabels[roadmap.tech_skills_score]})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60">
-                          <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                            <Users className="w-3 h-3 text-amber-500" />
-                            <span>Soft Skills</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                              {roadmap.soft_skills_score ?? '—'}/5
-                            </span>
-                            {roadmap.soft_skills_score && (
-                              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                ({scoreLabels[roadmap.soft_skills_score]})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60">
-                          <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                            <BookOpen className="w-3 h-3 text-emerald-500" />
-                            <span>Learning & Growth</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                              {roadmap.learning_score ?? '—'}/5
-                            </span>
-                            {roadmap.learning_score && (
-                              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                ({scoreLabels[roadmap.learning_score]})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Admin Notes */}
-                      {roadmap.admin_notes && (
-                        <div className="mt-3 p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60">
-                          <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                            Admin Notes & Feedback
-                          </div>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                            {roadmap.admin_notes}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* 30-60-90 Days Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3">
-                        <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-1">
-                            <Clock className="w-3 h-3 text-indigo-500" />
-                            <span>30 Days</span>
-                          </div>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                            {roadmap.goals_30_days || (
-                              <span className="text-slate-400 italic">No specific goals set</span>
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300 mb-1">
-                            <Layers className="w-3 h-3 text-purple-500" />
-                            <span>60 Days</span>
-                          </div>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                            {roadmap.goals_60_days || (
-                              <span className="text-slate-400 italic">No specific goals set</span>
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1">
-                            <Award className="w-3 h-3 text-emerald-500" />
-                            <span>90 Days</span>
-                          </div>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                            {roadmap.goals_90_days || (
-                              <span className="text-slate-400 italic">No specific goals set</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  {history.map((roadmap, i) => (
+                    <RoadmapView key={roadmap.id} roadmap={roadmap} active={i === 0} />
                   ))}
                 </div>
               )}

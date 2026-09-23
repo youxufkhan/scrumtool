@@ -30,16 +30,7 @@ export function getSupabaseClient(): SupabaseClient | null {
   return supabaseInstance;
 }
 
-export interface MockStoreState {
-  members: Member[];
-  projects: Project[];
-  submissions: DailySubmission[];
-  tasks: DailyTask[];
-  holidays: Holiday[];
-  memberRoadmaps: MemberRoadmap[];
-}
-
-export const initialStore: MockStoreState = {
+const initialStore: { members: Member[]; projects: Project[] } = {
   members: [
     { id: 'm-1', name: 'Alex Rivera', role: 'Frontend Lead', avatar_color: '#3B82F6', is_admin: true, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
     { id: 'm-2', name: 'Sam Chen', role: 'Backend Engineer', avatar_color: '#10B981', is_admin: false, is_active: true, passcode_hash: '93369f4b5512e84a0d5b1cbd8c54e0aaec37b40a8753fd03c156dd712ce45d50', has_custom_passcode: false, joined_at: '2026-01-01', created_at: new Date().toISOString() },
@@ -52,10 +43,6 @@ export const initialStore: MockStoreState = {
     { id: 'p-3', name: 'Infrastructure', color: '#8B5CF6', is_active: true, created_at: new Date().toISOString() },
     { id: 'p-4', name: 'Bug Fixes', color: '#EF4444', is_active: true, created_at: new Date().toISOString() },
   ],
-  submissions: [],
-  tasks: [],
-  holidays: [],
-  memberRoadmaps: [],
 };
 
 // In-Memory Mock Store for isolated unit tests or zero-config local demo
@@ -76,10 +63,6 @@ export class InMemoryStore {
 }
 
 export const mockStore = new InMemoryStore();
-
-export function createMockStore(): InMemoryStore {
-  return new InMemoryStore();
-}
 
 export function resetMockStore(): void {
   mockStore.clear();
